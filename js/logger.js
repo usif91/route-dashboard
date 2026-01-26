@@ -1,6 +1,5 @@
 import { GOOGLE_SCRIPT_URL } from './config.js';
 
-// Simple "fingerprint" to persist identity across reloads without asking name
 function getClientId() {
     let id = localStorage.getItem('dashboard_client_id');
     if (!id) {
@@ -11,26 +10,29 @@ function getClientId() {
 }
 
 export async function logSearch(query, topResult) {
-    if (GOOGLE_SCRIPT_URL.includes("YOUR_")) {
-        console.warn("Google Script URL not set in js/config.js");
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+        console.warn("Google Script URL not set");
         return;
     }
 
-    const payload = {
-        user: getClientId(), // Send a client ID so we can group them later
-        ip: "Client",        // IP is hard to get client-side without 3rd party service
-        query,
+    const params = new URLSearchParams({
+        user: getClientId(),
+        query: query,
         topResultSummary: topResult ? `${topResult.Route} (${topResult.YARD})` : "No Match"
-    };
+    });
+
+    const fullUrl = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;
 
     try {
-        // We send as plain text (default) to avoid CORS Preflight (OPTIONS request) which GAS hates.
-        // Google Script will just parse the POST body as JSON.
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
+        // Using GET avoids Preflight/CORS issues with Body parsing
+        await fetch(fullUrl, {
+            method: 'GET',
+            mode: 'cors' // Google Script handles GET CORS well
         });
+        console.log("Logged via GET:", query);
     } catch (e) {
         console.warn("Failed to log search", e);
+        // Fallback: Image beacon (fire and forget)
+        new Image().src = fullUrl;
     }
 }
