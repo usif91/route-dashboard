@@ -53,9 +53,13 @@ export function renderRows(rows, append = false) {
             </div>
           `;
 
+    const planValue = r[hiKey];
+    const displayValue = (planValue !== null && planValue !== undefined && planValue !== "") ? planValue : r.YARD;
+    const cellTitle = (planValue) ? `Current Plan (${hiKey})` : "Yard";
+
     const yardCell = `
-            <div class="cell-flex clickable" data-toggle="${escapeHtml(r.Route)}" title="Tap to expand/collapse">
-              <span>${formatVal(r.YARD)}</span>
+            <div class="cell-flex clickable" data-toggle="${escapeHtml(r.Route)}" title="Tap to expand/collapse. Showing: ${cellTitle}">
+              <span>${formatVal(displayValue)}</span>
             </div>
           `;
 
