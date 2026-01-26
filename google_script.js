@@ -5,7 +5,16 @@
 
 function doPost(e) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = JSON.parse(e.postData.contents);
+    var data;
+    try {
+        // If sent as 'application/x-www-form-urlencoded' (default for some), data might be in e.parameter
+        // If sent as raw text/json (what we do), it's in e.postData.contents
+        var raw = e.postData ? e.postData.contents : JSON.stringify(e.parameter);
+        data = JSON.parse(raw);
+    } catch (err) {
+        // Fallback if parsing fails, just log the error
+        data = { query: "JSON Error", topResultSummary: err.message, user: "System", ip: "Error" };
+    }
     var timestamp = new Date().toISOString();
 
     // Format: Time, IP, Name, Query, Top Result

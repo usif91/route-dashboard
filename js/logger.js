@@ -24,12 +24,10 @@ export async function logSearch(query, topResult) {
     };
 
     try {
-        // 'no-cors' is required for Google Apps Script doPost triggers from browser
-        // This means we won't get a readable response content, but the request succeeds.
+        // We send as plain text (default) to avoid CORS Preflight (OPTIONS request) which GAS hates.
+        // Google Script will just parse the POST body as JSON.
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
     } catch (e) {
