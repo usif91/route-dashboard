@@ -5,162 +5,150 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Route Admin Dashboard</title>
+    <!-- Use the premium styles from parent folder -->
+    <link rel="stylesheet" href="../css/style.css">
     <style>
+        /* Override/Add minor admin specific styles */
         body {
-            font-family: system-ui, sans-serif;
-            background: #0b0d12;
-            color: #e8ebf3;
             padding: 20px;
+            min-height: 100vh;
+        }
+
+        .admin-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         table {
-            width: 100%;
-            border-collapse: collapse;
             margin-top: 20px;
-        }
-
-        th,
-        td {
-            border-bottom: 1px solid #27304a;
-            padding: 12px;
-            text-align: left;
+            background: rgba(18, 22, 36, 0.78);
+            border-radius: 12px;
+            overflow: hidden;
         }
 
         th {
-            background: #121624;
-            color: #7aa2ff;
+            background: rgba(18, 22, 36, 0.95);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: var(--muted);
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        h1 {
-            margin-bottom: 0;
+        td {
+            border-bottom: 1px solid rgba(39, 48, 74, 0.4);
         }
 
         .refresh-btn {
-            background: #7aa2ff;
-            color: #0b0d12;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
+            margin-top: 20px;
+            background: var(--accent);
+            color: var(--bg);
             font-weight: bold;
-            margin-top: 10px;
+            border: none;
         }
 
-        .user-tag {
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            transition: background 0.2s;
+        .refresh-btn:hover {
+            background: #9bbaff;
         }
 
-        .user-tag:hover {
-            background: rgba(122, 162, 255, 0.3);
-        }
-
-        .unknown {
-            color: #a8b0c6;
-            font-style: italic;
+        .config-warning {
+            border: 1px solid var(--danger);
+            background: rgba(255, 107, 107, 0.1);
+            color: var(--danger);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <h1>Traffic Logs</h1>
-    <button class="refresh-btn" onclick="loadData()">Refresh Data</button>
-    <div id="status" style="margin-top:10px; color:#a8b0c6;"></div>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User / IP (Click to Rename)</th>
-                <th>Search Query</th>
-                <th>Top Result</th>
-            </tr>
-        </thead>
-        <tbody id="logBody"></tbody>
-    </table>
+    <div class="admin-wrap">
+        <header style="background:transparent; padding:0; position:relative; box-shadow:none; backdrop-filter:none;">
+            <h1>Traffic Logs</h1>
+            <div class="meta" style="margin-top:0;">Real-time search activity from Google Sheets</div>
+        </header>
 
-    <script>
-        let logs = [];
-        let users = {};
+        <div id="configWarning" class="config-warning">
+            <strong>Setup Required:</strong> Please open <code>js/config.js</code> and paste your Google Web App URL.
+        </div>
 
-        async function loadData() {
-            const status = document.getElementById("status");
-            if (window.location.protocol === 'file:') {
-                status.innerHTML = `<span style="color:#ff6b6b">Error: You are viewing this file directly!</span>`;
+        <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
+        <div id="status" class="meta" style="margin-top:10px;"></div>
+
+        <div class="card" style="box-shadow:none; background:transparent; border:none;">
+            <table>
+                <colgroup>
+                    <col style="width:20%">
+                    <col style="width:15%">
+                    <col style="width:25%">
+                    <col style="width:40%">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User ID</th>
+                        <th>Search Query</th>
+                        <th>Top Result</th>
+                    </tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GOOGLE_SCRIPT_URL } from '../js/config.js';
+
+        const $ = (id) => document.getElementById(id);
+
+        window.loadLogs = async function () {
+            const status = $("status");
+            const tbody = $("logBody");
+
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                $("configWarning").style.display = "block";
+                status.innerHTML = `<span style="color:var(--danger)">Configuration Missing</span>`;
                 return;
             }
 
-            status.textContent = "Loading...";
+            status.innerHTML = `Loading from Google Sheets... <span class="spinner"></span>`;
 
             try {
-                const [logRes, userRes] = await Promise.all([
-                    fetch('/api/logs'),
-                    fetch('/api/users')
-                ]);
+                // For GET requests, CORS is usually fine if the script is deployed as "Me" and access "Anyone"
+                const res = await fetch(GOOGLE_SCRIPT_URL);
+                if (!res.ok) throw new Error("Failed to fetch");
 
-                if (!logRes.ok || !userRes.ok) throw new Error("Failed to fetch");
+                const logs = await res.json();
 
-                logs = await logRes.json();
-                users = await userRes.json();
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</td></tr>`;
+                } else {
+                    tbody.innerHTML = logs.map(l => {
+                        let timeStr = l.timestamp;
+                        try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
+                        return `
+                        <tr>
+                            <td>${escape(timeStr)}</td>
+                            <td><span class="pill" style="display:inline-flex; border:none; background:rgba(255,255,255,0.05);">${escape(l.user)}</span></td>
+                            <td style="color:var(--accent)">${escape(l.query)}</td>
+                            <td>${escape(l.topResultSummary)}</td>
+                        </tr>
+                    `}).join("");
+                }
 
-                renderTable();
                 status.textContent = `Loaded ${logs.length} logs.`;
             } catch (err) {
-                status.textContent = "Error: " + err.message;
+                status.innerHTML = `<span style="color:var(--danger)">Error: ${err.message}</span>. Check console & CORS settings.`;
             }
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById("logBody");
-            tbody.innerHTML = logs.map(l => {
-                const ip = l.ip || "Unknown IP";
-                const name = users[ip] || ip;
-                const isNamed = !!users[ip];
-
-                return `
-                    <tr>
-                        <td>${new Date(l.timestamp).toLocaleString()}</td>
-                        <td>
-                            <span class="user-tag ${isNamed ? '' : 'unknown'}" 
-                                  onclick="renameUser('${ip}', '${escape(name)}')"
-                                  title="Click to rename IP: ${ip}">
-                                ${escape(name)}
-                            </span>
-                        </td>
-                        <td>${escape(l.query)}</td>
-                        <td>${escape(l.topResultSummary)}</td>
-                    </tr>
-                `;
-            }).join("");
-        }
-
-        async function renameUser(ip, currentName) {
-            const newName = prompt(`Rename user for IP: ${ip}`, currentName === ip ? "" : currentName);
-            if (newName && newName !== currentName) {
-                try {
-                    await fetch('/api/users', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ip, name: newName })
-                    });
-                    loadData(); // Reload to show new name
-                } catch (e) {
-                    alert("Failed to save user name");
-                }
-            }
-        }
+        };
 
         function escape(s) {
             return String(s || "").replaceAll("<", "&lt;");
         }
 
-        loadData();
+        // Auto load
+        loadLogs();
     </script>
 </body>
 
