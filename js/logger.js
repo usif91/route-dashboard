@@ -26,9 +26,20 @@ export async function logSearch(query, details = {}) {
 
     const fullUrl = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;
 
-    // "Fire and Forget" using Image Beacon. 
-    // This is the most reliable way to send GET requests across domains without CORS issues.
-    new Image().src = fullUrl;
+    // Strategy 1: Fetch with keepalive (modern standard for logging)
+    // This tells the browser "don't kill this request even if the user closes the tab/switches apps"
+    try {
+        fetch(fullUrl, { mode: 'no-cors', keepalive: true }).catch(() => { });
+    } catch (e) {
+        // Strategy 2: Image Beacon (Fallback)
+        // We append it to the body to ensure mobile browsers don't garbage collect it too early
+        const img = new Image();
+        img.src = fullUrl;
+        img.style.display = 'none';
+        document.body.appendChild(img);
+        // Clean up after a while
+        setTimeout(() => img.remove(), 5000);
+    }
 
     console.log("Logged:", query);
 }
