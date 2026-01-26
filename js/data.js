@@ -117,15 +117,31 @@ function mergeSheets(sheet1, sheet2) {
 
     const unnamed6 = sheet2.length ? Object.keys(sheet2[0]).find(k => k.toLowerCase().includes("unnamed") && k.includes("6")) : null;
 
-    const map2 = new Map();
+    // Helper to fuzzy find key in row object
+    const findKey = (row, digits) => Object.keys(row).find(k => {
+        const s = String(k).trim().toLowerCase();
+        // Match "6", "6.0", "6 car", "plan 6", etc.
+        return s === digits || s === `${digits}.0` || (s.includes(digits) && s.includes("car"));
+    });
+
     for (const r of sheet2) {
         const route = Number(r[routeKey2]);
         if (!Number.isFinite(route)) continue;
         const row = { ...r };
         row.Route = route;
-        if (unnamed6 && !("1 car" in row)) {
-            row["1 car"] = row[unnamed6];
+
+        // Normalize the car keys for easier checkout later
+        row.__plans = {};
+        for (const d of ["1", "2", "3", "4", "5", "6"]) {
+            const k = findKey(r, d);
+            if (k) row.__plans[`${d} car`] = r[k];
         }
+
+        if (unnamed6 && !row.__plans["1 car"]) {
+            // Fallback for unnamed column logic if it was "1 car"
+            row.__plans["1 car"] = row[unnamed6];
+        }
+
         map2.set(route, row);
     }
 
@@ -137,18 +153,20 @@ function mergeSheets(sheet1, sheet2) {
         const row1 = { ...r };
         row1.Route = route;
 
-        const row2 = map2.get(route) || {};
+        const row2 = map2.get(route) || { __plans: {} };
+        const plans = row2.__plans || {};
+
         const out = {
             Route: row1.Route,
             YARD: row1.YARD ?? null,
             STREETSORT: row1.STREETSORT ?? null,
             coordinates: row1.coordinates ?? null,
-            "6 car": row2["6 car"] ?? null,
-            "5 car": row2["5 car"] ?? null,
-            "4 car": row2["4 car"] ?? null,
-            "3 car": row2["3 car"] ?? null,
-            "2 car": row2["2 car"] ?? null,
-            "1 car": row2["1 car"] ?? null,
+            "6 car": plans["6 car"] ?? null,
+            "5 car": plans["5 car"] ?? null,
+            "4 car": plans["4 car"] ?? null,
+            "3 car": plans["3 car"] ?? null,
+            "2 car": plans["2 car"] ?? null,
+            "1 car": plans["1 car"] ?? null,
         };
 
         const { lat, lon } = parseCoord(out.coordinates);
