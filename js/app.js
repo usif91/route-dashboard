@@ -80,7 +80,7 @@ $("q").addEventListener("input", (e) => {
         logTimeout = setTimeout(() => {
             const top = state.matches.length > 0 ? state.matches[0] : null;
             logSearch(state.query, { topResult: top });
-        }, 2000);
+        }, 800);
     }
 });
 
