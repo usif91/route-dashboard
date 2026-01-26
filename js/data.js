@@ -124,6 +124,8 @@ function mergeSheets(sheet1, sheet2) {
         return s === digits || s === `${digits}.0` || (s.includes(digits) && s.includes("car"));
     });
 
+    const map2 = new Map();
+
     for (const r of sheet2) {
         const route = Number(r[routeKey2]);
         if (!Number.isFinite(route)) continue;
