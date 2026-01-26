@@ -79,7 +79,7 @@ $("q").addEventListener("input", (e) => {
     if (state.query.trim().length >= 2) {
         logTimeout = setTimeout(() => {
             const top = state.matches.length > 0 ? state.matches[0] : null;
-            logSearch(state.query, top);
+            logSearch(state.query, { topResult: top });
         }, 2000);
     }
 });
@@ -93,6 +93,16 @@ $("btnNear").addEventListener("click", () => {
     searchNearMe(setStatus, () => {
         $("tbody").innerHTML = "";
         renderNextNear();
+
+        // Log the location search
+        if (state.userPos) {
+            const top = state.nearSorted.length > 0 ? state.nearSorted[0].r : null;
+            logSearch("Search Near Me", {
+                topResult: top,
+                location: state.userPos,
+                intersection: top ? top.STREETSORT : "Unknown"
+            });
+        }
     });
 });
 

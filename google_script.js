@@ -6,17 +6,19 @@ function doGet(e) {
     if (params.query) {
         var timestamp = new Date().toISOString();
 
-        // Add header if missing
+        // Add header if missing (Updated schema)
         if (sheet.getLastRow() === 0) {
-            sheet.appendRow(["Timestamp", "IP (Simulated)", "Name (Manual)", "Query", "Top Result"]);
+            sheet.appendRow(["Timestamp", "IP (Simulated)", "Name (Manual)", "Query", "Top Result", "Intersection", "Location"]);
         }
 
         sheet.appendRow([
             timestamp,
-            "Client", // Can't get true IP in GET either
+            "Client",
             params.user || "Anonymous",
             params.query,
-            params.topResultSummary || ""
+            params.topResultSummary || "",
+            params.intersection || "",
+            params.location || ""
         ]);
 
         // Return JSON success (wrapped in padding for extra safety if needed, but JSON is fine)
@@ -40,7 +42,9 @@ function doGet(e) {
             ip: row[1],
             user: row[2],
             query: row[3],
-            topResultSummary: row[4]
+            topResultSummary: row[4],
+            intersection: row[5],
+            location: row[6]
         };
     });
 

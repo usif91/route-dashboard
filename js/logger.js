@@ -9,16 +9,19 @@ function getClientId() {
     return id;
 }
 
-export async function logSearch(query, topResult) {
+export async function logSearch(query, details = {}) {
     if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
         console.warn("Google Script URL not set");
         return;
     }
 
+    const topResult = details.topResult;
     const params = new URLSearchParams({
         user: getClientId(),
         query: query,
-        topResultSummary: topResult ? `${topResult.Route} (${topResult.YARD})` : "No Match"
+        topResultSummary: topResult ? `${topResult.Route} (${topResult.YARD})` : "No Match",
+        intersection: details.intersection || (topResult ? topResult.STREETSORT : ""),
+        location: details.location ? `${details.location.lat},${details.location.lon}` : ""
     });
 
     const fullUrl = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;

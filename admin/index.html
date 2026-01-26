@@ -79,10 +79,12 @@
         <div class="card" style="box-shadow:none; background:transparent; border:none;">
             <table>
                 <colgroup>
-                    <col style="width:20%">
                     <col style="width:15%">
+                    <col style="width:10%">
+                    <col style="width:20%">
                     <col style="width:25%">
-                    <col style="width:40%">
+                    <col style="width:20%">
+                    <col style="width:10%">
                 </colgroup>
                 <thead>
                     <tr>
@@ -90,6 +92,8 @@
                         <th>User ID</th>
                         <th>Search Query</th>
                         <th>Top Result</th>
+                        <th>Intersection</th>
+                        <th>Map</th>
                     </tr>
                 </thead>
                 <tbody id="logBody"></tbody>
@@ -122,17 +126,27 @@
                 const logs = await res.json();
 
                 if (logs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</td></tr>`;
                 } else {
                     tbody.innerHTML = logs.map(l => {
                         let timeStr = l.timestamp;
                         try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
+
+                        let mapLink = "—";
+                        if (l.location) {
+                            mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View</a>`;
+                        } else if (l.topResultSummary && l.topResultSummary.includes("No Match") === false) {
+                            // Try to be smart? No, just use location if provided.
+                        }
+
                         return `
                         <tr>
                             <td>${escape(timeStr)}</td>
                             <td><span class="pill" style="display:inline-flex; border:none; background:rgba(255,255,255,0.05);">${escape(l.user)}</span></td>
                             <td style="color:var(--accent)">${escape(l.query)}</td>
                             <td>${escape(l.topResultSummary)}</td>
+                            <td>${escape(l.intersection)}</td>
+                            <td>${mapLink}</td>
                         </tr>
                     `}).join("");
                 }
