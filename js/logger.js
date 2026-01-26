@@ -1,27 +1,9 @@
-
 const LOG_API = '/api/log';
 
-export function getUserIdentity() {
-    let user = localStorage.getItem('dashboard_user');
-    if (!user) {
-        user = prompt("Please enter your Name or ID to access the dashboard:");
-        if (user) {
-            localStorage.setItem('dashboard_user', user);
-        } else {
-            user = "Anonymous";
-        }
-    }
-    return user;
-}
-
 export async function logSearch(query, topResult) {
-    const user = getUserIdentity();
+    // No prompt anymore. Server will attach IP.
     const payload = {
-        user,
         query,
-        topResult,
-        // topResult usually object like { Route: 123, YARD: '...', ... }
-        // We'll store a simplified string summary
         topResultSummary: topResult ? `${topResult.Route} (${topResult.YARD})` : "No Match"
     };
 

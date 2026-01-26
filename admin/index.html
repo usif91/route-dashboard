@@ -49,18 +49,35 @@
             font-weight: bold;
             margin-top: 10px;
         }
+
+        .user-tag {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .user-tag:hover {
+            background: rgba(122, 162, 255, 0.3);
+        }
+
+        .unknown {
+            color: #a8b0c6;
+            font-style: italic;
+        }
     </style>
 </head>
 
 <body>
     <h1>Traffic Logs</h1>
-    <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
+    <button class="refresh-btn" onclick="loadData()">Refresh Data</button>
     <div id="status" style="margin-top:10px; color:#a8b0c6;"></div>
     <table>
         <thead>
             <tr>
                 <th>Time</th>
-                <th>User</th>
+                <th>User / IP (Click to Rename)</th>
                 <th>Search Query</th>
                 <th>Top Result</th>
             </tr>
@@ -69,35 +86,73 @@
     </table>
 
     <script>
-        async function loadLogs() {
-            const status = document.getElementById("status");
-            const tbody = document.getElementById("logBody");
+        let logs = [];
+        let users = {};
 
+        async function loadData() {
+            const status = document.getElementById("status");
             if (window.location.protocol === 'file:') {
-                status.innerHTML = `<span style="color:#ff6b6b">Error: You are viewing this file directly!</span><br>
-                                    Please run <code>python server.py</code> and visit <a href="http://localhost:3000/admin" style="color:#7aa2ff">http://localhost:3000/admin</a>`;
+                status.innerHTML = `<span style="color:#ff6b6b">Error: You are viewing this file directly!</span>`;
                 return;
             }
 
             status.textContent = "Loading...";
 
             try {
-                const res = await fetch('/api/logs');
-                if (!res.ok) throw new Error("Failed to fetch");
-                const logs = await res.json();
+                const [logRes, userRes] = await Promise.all([
+                    fetch('/api/logs'),
+                    fetch('/api/users')
+                ]);
 
-                tbody.innerHTML = logs.map(l => `
+                if (!logRes.ok || !userRes.ok) throw new Error("Failed to fetch");
+
+                logs = await logRes.json();
+                users = await userRes.json();
+
+                renderTable();
+                status.textContent = `Loaded ${logs.length} logs.`;
+            } catch (err) {
+                status.textContent = "Error: " + err.message;
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("logBody");
+            tbody.innerHTML = logs.map(l => {
+                const ip = l.ip || "Unknown IP";
+                const name = users[ip] || ip;
+                const isNamed = !!users[ip];
+
+                return `
                     <tr>
                         <td>${new Date(l.timestamp).toLocaleString()}</td>
-                        <td>${escape(l.user)}</td>
+                        <td>
+                            <span class="user-tag ${isNamed ? '' : 'unknown'}" 
+                                  onclick="renameUser('${ip}', '${escape(name)}')"
+                                  title="Click to rename IP: ${ip}">
+                                ${escape(name)}
+                            </span>
+                        </td>
                         <td>${escape(l.query)}</td>
                         <td>${escape(l.topResultSummary)}</td>
                     </tr>
-                `).join("");
+                `;
+            }).join("");
+        }
 
-                status.textContent = `Loaded ${logs.length} logs.`;
-            } catch (err) {
-                status.textContent = "Error loading logs: " + err.message + ". Is the server running?";
+        async function renameUser(ip, currentName) {
+            const newName = prompt(`Rename user for IP: ${ip}`, currentName === ip ? "" : currentName);
+            if (newName && newName !== currentName) {
+                try {
+                    await fetch('/api/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ip, name: newName })
+                    });
+                    loadData(); // Reload to show new name
+                } catch (e) {
+                    alert("Failed to save user name");
+                }
             }
         }
 
@@ -105,7 +160,7 @@
             return String(s || "").replaceAll("<", "&lt;");
         }
 
-        loadLogs();
+        loadData();
     </script>
 </body>
 
