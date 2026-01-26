@@ -1,6 +1,9 @@
 import { state, loadWorkbook, computeMatches, searchNearMe } from './data.js';
 import { setStatus, updateCounts, renderNext, renderNextNear, renderRows } from './ui.js';
 import { escapeHtml } from './utils.js';
+import { logSearch } from './logger.js';
+
+let logTimeout;
 
 const $ = (id) => document.getElementById(id);
 const EXCEL_FILE = "data.xlsx";
@@ -70,6 +73,15 @@ $("q").addEventListener("input", (e) => {
     setStatus("", "");
     computeMatches();
     renderNext(true); // Re-render with new matches
+
+    // Logging with debounce (wait 2s after typing stops)
+    clearTimeout(logTimeout);
+    if (state.query.trim().length >= 2) {
+        logTimeout = setTimeout(() => {
+            const top = state.matches.length > 0 ? state.matches[0] : null;
+            logSearch(state.query, top);
+        }, 2000);
+    }
 });
 
 $("btnMore").addEventListener("click", () => {

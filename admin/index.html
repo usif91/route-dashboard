@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Route Admin Dashboard</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #0b0d12;
+            color: #e8ebf3;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #27304a;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #121624;
+            color: #7aa2ff;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        h1 {
+            margin-bottom: 0;
+        }
+
+        .refresh-btn {
+            background: #7aa2ff;
+            color: #0b0d12;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Traffic Logs</h1>
+    <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
+    <div id="status" style="margin-top:10px; color:#a8b0c6;"></div>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Search Query</th>
+                <th>Top Result</th>
+            </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+    </table>
+
+    <script>
+        async function loadLogs() {
+            const status = document.getElementById("status");
+            const tbody = document.getElementById("logBody");
+            status.textContent = "Loading...";
+
+            try {
+                const res = await fetch('/api/logs');
+                if (!res.ok) throw new Error("Failed to fetch");
+                const logs = await res.json();
+
+                tbody.innerHTML = logs.map(l => `
+                    <tr>
+                        <td>${new Date(l.timestamp).toLocaleString()}</td>
+                        <td>${escape(l.user)}</td>
+                        <td>${escape(l.query)}</td>
+                        <td>${escape(l.topResultSummary)}</td>
+                    </tr>
+                `).join("");
+
+                status.textContent = `Loaded ${logs.length} logs.`;
+            } catch (err) {
+                status.textContent = "Error loading logs: " + err.message;
+            }
+        }
+
+        function escape(s) {
+            return String(s || "").replaceAll("<", "&lt;");
+        }
+
+        loadLogs();
+    </script>
+</body>
+
+</html>
