@@ -23,16 +23,9 @@ export async function logSearch(query, topResult) {
 
     const fullUrl = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;
 
-    try {
-        // Using GET avoids Preflight/CORS issues with Body parsing
-        await fetch(fullUrl, {
-            method: 'GET',
-            mode: 'cors' // Google Script handles GET CORS well
-        });
-        console.log("Logged via GET:", query);
-    } catch (e) {
-        console.warn("Failed to log search", e);
-        // Fallback: Image beacon (fire and forget)
-        new Image().src = fullUrl;
-    }
+    // "Fire and Forget" using Image Beacon. 
+    // This is the most reliable way to send GET requests across domains without CORS issues.
+    new Image().src = fullUrl;
+
+    console.log("Logged:", query);
 }
