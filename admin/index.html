@@ -72,6 +72,13 @@
         async function loadLogs() {
             const status = document.getElementById("status");
             const tbody = document.getElementById("logBody");
+
+            if (window.location.protocol === 'file:') {
+                status.innerHTML = `<span style="color:#ff6b6b">Error: You are viewing this file directly!</span><br>
+                                    Please run <code>python server.py</code> and visit <a href="http://localhost:3000/admin" style="color:#7aa2ff">http://localhost:3000/admin</a>`;
+                return;
+            }
+
             status.textContent = "Loading...";
 
             try {
@@ -90,7 +97,7 @@
 
                 status.textContent = `Loaded ${logs.length} logs.`;
             } catch (err) {
-                status.textContent = "Error loading logs: " + err.message;
+                status.textContent = "Error loading logs: " + err.message + ". Is the server running?";
             }
         }
 
