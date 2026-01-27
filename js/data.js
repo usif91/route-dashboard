@@ -120,7 +120,6 @@ function mergeSheets(sheet1, sheet2) {
     // Helper to fuzzy find key in row object
     const findKey = (row, digits) => Object.keys(row).find(k => {
         const s = String(k).trim().toLowerCase();
-        // Match "6", "6.0", "6 car", "plan 6", etc.
         return s === digits || s === `${digits}.0` || (s.includes(digits) && s.includes("car"));
     });
 
@@ -132,7 +131,7 @@ function mergeSheets(sheet1, sheet2) {
         const row = { ...r };
         row.Route = route;
 
-        // Normalize the car keys for easier checkout later
+        // Normalize the car keys
         row.__plans = {};
         for (const d of ["1", "2", "3", "4", "5", "6"]) {
             const k = findKey(r, d);
@@ -140,12 +139,17 @@ function mergeSheets(sheet1, sheet2) {
         }
 
         if (unnamed6 && !row.__plans["1 car"]) {
-            // Fallback for unnamed column logic if it was "1 car"
             row.__plans["1 car"] = row[unnamed6];
         }
 
         map2.set(route, row);
     }
+
+    // Helper to find column case-insensitively
+    const findCol = (row, name) => Object.keys(row).find(k => k.toLowerCase().includes(name.toLowerCase()));
+
+    const yardKey = sheet1.length ? (("YARD" in sheet1[0]) ? "YARD" : findCol(sheet1[0], "yard")) : "YARD";
+    const streetKey = sheet1.length ? (("STREETSORT" in sheet1[0]) ? "STREETSORT" : findCol(sheet1[0], "street")) : "STREETSORT";
 
     const merged = [];
     for (const r of sheet1) {
@@ -155,156 +159,142 @@ function mergeSheets(sheet1, sheet2) {
         const row1 = { ...r };
         row1.Route = route;
 
-        // Helper to find column case-insensitively
-        const findCol = (row, name) => Object.keys(row).find(k => k.toLowerCase().includes(name.toLowerCase()));
+        const row2 = map2.get(route) || { __plans: {} };
+        const plans = row2.__plans || {};
 
-        const yardKey = sheet1.length ? (("YARD" in sheet1[0]) ? "YARD" : findCol(sheet1[0], "yard")) : "YARD";
-        const streetKey = sheet1.length ? (("STREETSORT" in sheet1[0]) ? "STREETSORT" : findCol(sheet1[0], "street")) : "STREETSORT";
+        const out = {
+            Route: row1.Route,
+            YARD: row1[yardKey] ?? null,
+            STREETSORT: row1[streetKey] ?? null,
+            coordinates: row1.coordinates ?? null,
+            "6 car": plans["6 car"] ?? null,
+            "5 car": plans["5 car"] ?? null,
+            "4 car": plans["4 car"] ?? null,
+            "3 car": plans["3 car"] ?? null,
+            "2 car": plans["2 car"] ?? null,
+            "1 car": plans["1 car"] ?? null,
+        };
 
-        const merged = [];
-        for (const r of sheet1) {
-            const route = Number(r[routeKey1]);
-            if (!Number.isFinite(route)) continue;
+        const { lat, lon } = parseCoord(out.coordinates);
+        out.lat = lat; out.lon = lon;
 
-            const row1 = { ...r };
-            row1.Route = route;
-
-            const row2 = map2.get(route) || { __plans: {} };
-            const plans = row2.__plans || {};
-
-            const out = {
-                Route: row1.Route,
-                YARD: row1[yardKey] ?? null,
-                STREETSORT: row1[streetKey] ?? null,
-                coordinates: row1.coordinates ?? null,
-                "6 car": plans["6 car"] ?? null,
-                "5 car": plans["5 car"] ?? null,
-                "4 car": plans["4 car"] ?? null,
-                "3 car": plans["3 car"] ?? null,
-                "2 car": plans["2 car"] ?? null,
-                "1 car": plans["1 car"] ?? null,
-            };
-
-            const { lat, lon } = parseCoord(out.coordinates);
-            out.lat = lat; out.lon = lon;
-
-            merged.push(out);
-        }
-        state.DATA = merged;
+        merged.push(out);
     }
+    state.DATA = merged;
+}
 
-    function parseCoord(s) {
-        if (s === null || s === undefined) return { lat: null, lon: null };
-        const txt = String(s).trim().replace(/,+\s*$/, "");
-        const parts = txt.split(",").map(x => x.trim()).filter(Boolean);
-        if (parts.length < 2) return { lat: null, lon: null };
-        const lat = Number(parts[0]);
-        const lon = Number(parts[1]);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { lat: null, lon: null };
-        return { lat, lon };
+function parseCoord(s) {
+    if (s === null || s === undefined) return { lat: null, lon: null };
+    const txt = String(s).trim().replace(/,+\s*$/, "");
+    const parts = txt.split(",").map(x => x.trim()).filter(Boolean);
+    if (parts.length < 2) return { lat: null, lon: null };
+    const lat = Number(parts[0]);
+    const lon = Number(parts[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { lat: null, lon: null };
+    return { lat, lon };
+}
+
+function buildHaystack(r) {
+    const raw = (r.Route ?? "").toString();
+    const digits = raw.replace(/\D/g, "");
+    const padded = (digits || raw).toString().padStart(5, "0");
+    return normalizeForTokens(`${padded} ${digits || raw} ${r.YARD ?? ""} ${r.STREETSORT ?? ""}`);
+}
+
+function queryMode(q) {
+    const norm = normalizeForTokens(q);
+    if (!norm) return "all";
+    const hasLetter = /[A-Z]/.test(norm);
+    const hasDigit = /[0-9]/.test(norm);
+    if (!hasLetter && hasDigit) return "numeric";
+    return "alpha";
+}
+
+function haystackForMode(r, mode) {
+    if (mode === "numeric") {
+        const route = formatRoute(r.Route);
+        return normalizeForTokens(`${route} ${r.STREETSORT ?? ""}`);
     }
-
-    function buildHaystack(r) {
-        const raw = (r.Route ?? "").toString();
-        const digits = raw.replace(/\D/g, "");
-        const padded = (digits || raw).toString().padStart(5, "0");
-        return normalizeForTokens(`${padded} ${digits || raw} ${r.YARD ?? ""} ${r.STREETSORT ?? ""}`);
+    if (mode === "alpha") {
+        return normalizeForTokens(`${r.STREETSORT ?? ""}`);
     }
+    return buildHaystack(r);
+}
 
-    function queryMode(q) {
-        const norm = normalizeForTokens(q);
-        if (!norm) return "all";
-        const hasLetter = /[A-Z]/.test(norm);
-        const hasDigit = /[0-9]/.test(norm);
-        if (!hasLetter && hasDigit) return "numeric";
-        return "alpha";
-    }
+function tokenizeQuery(q) {
+    const qNorm = normalizeForTokens(q);
+    return qNorm.split(" ").filter(Boolean).filter(t => t !== "AND");
+}
 
-    function haystackForMode(r, mode) {
-        if (mode === "numeric") {
-            const route = formatRoute(r.Route);
-            return normalizeForTokens(`${route} ${r.STREETSORT ?? ""}`);
-        }
-        if (mode === "alpha") {
-            return normalizeForTokens(`${r.STREETSORT ?? ""}`);
-        }
-        return buildHaystack(r);
-    }
+function tokenMatch(query, haystack) {
+    if (!query) return true;
+    const tokens = tokenizeQuery(query);
+    if (!tokens.length) return true;
+    return tokens.every(t => {
+        const alts = state.synonyms.get(t) || [t];
+        return alts.some(a => haystack.includes(a));
+    });
+}
 
-    function tokenizeQuery(q) {
-        const qNorm = normalizeForTokens(q);
-        return qNorm.split(" ").filter(Boolean).filter(t => t !== "AND");
-    }
+function haversineMiles(lat1, lon1, lat2, lon2) {
+    const toRad = (d) => (d * Math.PI) / 180;
+    const R = 3958.7613;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
 
-    function tokenMatch(query, haystack) {
-        if (!query) return true;
-        const tokens = tokenizeQuery(query);
-        if (!tokens.length) return true;
-        return tokens.every(t => {
-            const alts = state.synonyms.get(t) || [t];
-            return alts.some(a => haystack.includes(a));
-        });
-    }
+export function computeMatches() {
+    state.nearMode = false;
+    state.nearSorted = [];
+    state.nearIndex = 0;
 
-    function haversineMiles(lat1, lon1, lat2, lon2) {
-        const toRad = (d) => (d * Math.PI) / 180;
-        const R = 3958.7613;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
+    const q = state.query;
 
-    export function computeMatches() {
-        state.nearMode = false;
-        state.nearSorted = [];
-        state.nearIndex = 0;
-
-        const q = state.query;
-
-        // User Requirement: Don't show results before adding at least 2 letters
-        if (q.trim().length < 2) {
-            state.matches = [];
-            state.shown = 0;
-            return;
-        }
-
-        const mode = queryMode(q);
-        state.matches = state.DATA.filter(r => tokenMatch(q, haystackForMode(r, mode)));
+    // User Requirement: Don't show results before adding at least 2 letters
+    if (q.trim().length < 2) {
+        state.matches = [];
         state.shown = 0;
+        return;
     }
 
-    export function searchNearMe(setStatusCallback, renderCallback) {
-        if (!navigator.geolocation) {
-            setStatusCallback("error", "Geolocation not supported in this browser.");
-            return;
-        }
-        setStatusCallback("muted", `Searching near you… <span class="spinner"></span>`);
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                state.userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+    const mode = queryMode(q);
+    state.matches = state.DATA.filter(r => tokenMatch(q, haystackForMode(r, mode)));
+    state.shown = 0;
+}
 
-                const withDist = state.DATA
-                    .filter(r => typeof r.lat === "number" && typeof r.lon === "number")
-                    .map(r => ({ r, d: haversineMiles(state.userPos.lat, state.userPos.lon, r.lat, r.lon) }))
-                    .sort((a, b) => a.d - b.d);
-
-                state.nearMode = true;
-                state.nearSorted = withDist;
-                state.nearIndex = 0;
-
-                const lat = state.userPos.lat.toFixed(6);
-                const lon = state.userPos.lon.toFixed(6);
-                const acc = (state.userPos.accuracy ?? 0).toFixed(0);
-                setStatusCallback("ok", `Captured your location: <b>${lat}, ${lon}</b> (±${acc} m).`);
-
-                state.expandedRoutes.clear();
-                renderCallback();
-            },
-            (err) => setStatusCallback("error", `Could not get your location: ${escapeHtml(err.message)}`),
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-        );
+export function searchNearMe(setStatusCallback, renderCallback) {
+    if (!navigator.geolocation) {
+        setStatusCallback("error", "Geolocation not supported in this browser.");
+        return;
     }
+    setStatusCallback("muted", `Searching near you… <span class="spinner"></span>`);
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            state.userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+
+            const withDist = state.DATA
+                .filter(r => typeof r.lat === "number" && typeof r.lon === "number")
+                .map(r => ({ r, d: haversineMiles(state.userPos.lat, state.userPos.lon, r.lat, r.lon) }))
+                .sort((a, b) => a.d - b.d);
+
+            state.nearMode = true;
+            state.nearSorted = withDist;
+            state.nearIndex = 0;
+
+            const lat = state.userPos.lat.toFixed(6);
+            const lon = state.userPos.lon.toFixed(6);
+            const acc = (state.userPos.accuracy ?? 0).toFixed(0);
+            setStatusCallback("ok", `Captured your location: <b>${lat}, ${lon}</b> (±${acc} m).`);
+
+            state.expandedRoutes.clear();
+            renderCallback();
+        },
+        (err) => setStatusCallback("error", `Could not get your location: ${escapeHtml(err.message)}`),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+}
