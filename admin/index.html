@@ -63,46 +63,129 @@
 </head>
 
 <body>
-    <div
-        style="position:fixed; top:2px; right:5px; font-size:10px; color:rgba(255,255,255,0.2); pointer-events:none; z-index:9999;">
-        v1.9</div>
-    <div class="admin-wrap">
-        <header style="background:transparent; padding:0; position:relative; box-shadow:none; backdrop-filter:none;">
-            <h1>Traffic Logs</h1>
-            <div class="meta" style="margin-top:0;">Real-time search activity from Google Sheets</div>
-        </header>
-
-        <div id="configWarning" class="config-warning">
-            <strong>Setup Required:</strong> Please open <code>js/config.js</code> and paste your Google Web App URL.
-        </div>
-
-        <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
-        <div id="status" class="meta" style="margin-top:10px;"></div>
-
-        <div class="card" style="box-shadow:none; background:transparent; border:none;">
-            <table>
-                <colgroup>
-                    <col style="width:15%">
-                    <col style="width:10%">
-                    <col style="width:20%">
-                    <col style="width:25%">
-                    <col style="width:20%">
-                    <col style="width:10%">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>User ID</th>
-                        <th>Search Query</th>
-                        <th>Top Result</th>
-                        <th>Intersection</th>
-                        <th>Map</th>
-                    </tr>
-                </thead>
-                <tbody id="logBody"></tbody>
-            </table>
+    <!-- Password Protection -->
+    <div id="passwordPrompt"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:10000;">
+        <div
+            style="background:rgba(18, 22, 36, 0.95); padding:40px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); max-width:400px; width:90%;">
+            <h2 style="margin-top:0; color:var(--accent);">Admin Access</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">Please enter the password to access the admin panel.</p>
+            <input type="password" id="passwordInput" placeholder="Enter password"
+                style="width:100%; padding:12px; border-radius:6px; border:1px solid rgba(124, 159, 255, 0.3); background:rgba(255,255,255,0.05); color:white; font-size:14px; margin-bottom:10px;" />
+            <div id="passwordError" style="color:var(--danger); margin-bottom:10px; font-size:13px; min-height:20px;">
+            </div>
+            <button onclick="checkPassword()"
+                style="width:100%; padding:12px; background:var(--accent); color:var(--bg); border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Unlock</button>
+            <div style="margin-top:20px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
+                <p style="color:var(--muted); font-size:12px; margin:0;">
+                    <strong>Default password:</strong> admin123<br>
+                    <em>To change the password, see the instructions in the admin HTML file.</em>
+                </p>
+            </div>
         </div>
     </div>
+
+    <div id="adminContent" style="display:none;">
+        <div
+            style="position:fixed; top:2px; right:5px; font-size:10px; color:rgba(255,255,255,0.2); pointer-events:none; z-index:9999;">
+            v1.9</div>
+        <div class="admin-wrap">
+            <header
+                style="background:transparent; padding:0; position:relative; box-shadow:none; backdrop-filter:none;">
+                <h1>Traffic Logs</h1>
+                <div class="meta" style="margin-top:0;">Real-time search activity from Google Sheets</div>
+            </header>
+
+            <div id="configWarning" class="config-warning">
+                <strong>Setup Required:</strong> Please open <code>js/config.js</code> and paste your Google Web App
+                URL.
+            </div>
+
+            <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
+            <div id="status" class="meta" style="margin-top:10px;"></div>
+
+            <div class="card" style="box-shadow:none; background:transparent; border:none;">
+                <table>
+                    <colgroup>
+                        <col style="width:15%">
+                        <col style="width:10%">
+                        <col style="width:20%">
+                        <col style="width:25%">
+                        <col style="width:20%">
+                        <col style="width:10%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User ID</th>
+                            <th>Search Query</th>
+                            <th>Top Result</th>
+                            <th>Intersection</th>
+                            <th>Map</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password protection using SHA-256 hash
+        // Current password: "admin123"
+        // To change: Replace the hash below with a new SHA-256 hash of your desired password
+        // Generate hash at: https://emn178.github.io/online-tools/sha256.html
+        const PASSWORD_HASH = '28d37ad8fab860e9b586193e8c3fc13464abc535e92daa94fd534eee53a08051'; // admin123
+
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function checkPassword() {
+            const input = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('passwordError');
+
+            if (!input) {
+                errorDiv.textContent = 'Please enter a password';
+                return;
+            }
+
+            const hash = await hashPassword(input);
+
+            if (hash === PASSWORD_HASH) {
+                // Store auth in sessionStorage (only lasts for this browser tab session)
+                sessionStorage.setItem('admin_authenticated', 'true');
+                document.getElementById('passwordPrompt').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+            } else {
+                errorDiv.textContent = 'Incorrect password. Please try again.';
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('passwordInput');
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        checkPassword();
+                    }
+                });
+                passwordInput.focus();
+            }
+
+            // Check if already authenticated in this session
+            if (sessionStorage.getItem('admin_authenticated') === 'true') {
+                document.getElementById('passwordPrompt').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+            }
+        });
+    </script>
 
     <script type="module">
         import { GOOGLE_SCRIPT_URL } from '../js/config.js';
