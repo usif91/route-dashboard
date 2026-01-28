@@ -3,7 +3,8 @@ import { GOOGLE_SCRIPT_URL } from './config.js';
 function getClientId() {
     let id = localStorage.getItem('dashboard_client_id');
     if (!id) {
-        id = 'User-' + Math.random().toString(36).substr(2, 9);
+        // Generate a unique device ID with timestamp for uniqueness
+        id = 'device-' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36).substr(-4);
         localStorage.setItem('dashboard_client_id', id);
     }
     return id;

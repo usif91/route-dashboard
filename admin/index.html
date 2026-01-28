@@ -108,6 +108,73 @@
         import { GOOGLE_SCRIPT_URL } from '../js/config.js';
 
         const $ = (id) => document.getElementById(id);
+        let nicknamesCache = {};
+
+        async function loadNicknamesFromSheets() {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                const stored = localStorage.getItem('device_nicknames');
+                nicknamesCache = stored ? JSON.parse(stored) : {};
+                return;
+            }
+
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getNicknames`);
+                if (res.ok) {
+                    nicknamesCache = await res.json();
+                    localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+                } else {
+                    throw new Error('Failed to fetch nicknames');
+                }
+            } catch (err) {
+                console.warn('Failed to load nicknames from Google Sheets, using localStorage:', err);
+                const stored = localStorage.getItem('device_nicknames');
+                nicknamesCache = stored ? JSON.parse(stored) : {};
+            }
+        }
+
+        async function saveNicknameToSheets(deviceId, nickname) {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                setNicknameLocal(deviceId, nickname);
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'setNickname',
+                    deviceId: deviceId,
+                    nickname: nickname || ''
+                });
+
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?${params.toString()}`);
+
+                if (res.ok) {
+                    if (nickname && nickname.trim()) {
+                        nicknamesCache[deviceId] = nickname.trim();
+                    } else {
+                        delete nicknamesCache[deviceId];
+                    }
+                    localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+                } else {
+                    throw new Error('Failed to save nickname');
+                }
+            } catch (err) {
+                console.error('Failed to save nickname to Google Sheets:', err);
+                setNicknameLocal(deviceId, nickname);
+            }
+        }
+
+        function setNicknameLocal(deviceId, nickname) {
+            if (nickname && nickname.trim()) {
+                nicknamesCache[deviceId] = nickname.trim();
+            } else {
+                delete nicknamesCache[deviceId];
+            }
+            localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+        }
+
+        function getDisplayName(deviceId) {
+            return nicknamesCache[deviceId] || deviceId;
+        }
 
         window.loadLogs = async function () {
             const status = $("status");
@@ -121,8 +188,9 @@
 
             status.innerHTML = `Loading from Google Sheets... <span class="spinner"></span>`;
 
+            await loadNicknamesFromSheets();
+
             try {
-                // For GET requests, CORS is usually fine if the script is deployed as "Me" and access "Anyone"
                 const res = await fetch(GOOGLE_SCRIPT_URL);
                 if (!res.ok) throw new Error("Failed to fetch");
 
@@ -138,20 +206,47 @@
                         let mapLink = "—";
                         if (l.location) {
                             mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View</a>`;
-                        } else if (l.topResultSummary && l.topResultSummary.includes("No Match") === false) {
-                            // Try to be smart? No, just use location if provided.
                         }
+
+                        const deviceId = l.user || "Unknown";
+                        const displayName = getDisplayName(deviceId);
+                        const isNicknamed = displayName !== deviceId;
 
                         return `
                         <tr>
                             <td>${escape(timeStr)}</td>
-                            <td><span class="pill" style="display:inline-flex; border:none; background:rgba(255,255,255,0.05);">${escape(l.user)}</span></td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="pill" style="display:inline-flex; border:none; background:${isNicknamed ? 'rgba(124, 159, 255, 0.15)' : 'rgba(255,255,255,0.05)'}; font-size:11px;" title="Device ID: ${escape(deviceId)}">${escape(displayName)}</span>
+                                    <button class="edit-nickname-btn" data-device-id="${escape(deviceId)}" style="font-size:11px; padding:2px 6px; background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:pointer; border-radius:4px;" title="Edit nickname">✏️</button>
+                                </div>
+                            </td>
                             <td style="color:var(--accent)">${escape(l.query)}</td>
                             <td>${escape(l.topResultSummary)}</td>
                             <td>${escape(l.intersection)}</td>
                             <td>${mapLink}</td>
                         </tr>
                     `}).join("");
+
+                    document.querySelectorAll('.edit-nickname-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const deviceId = btn.getAttribute('data-device-id');
+                            const currentNickname = getDisplayName(deviceId);
+                            const prompt_text = deviceId === currentNickname
+                                ? `Enter a nickname for device "${deviceId}":`
+                                : `Edit nickname for device "${deviceId}"\nCurrent: "${currentNickname}"`;
+
+                            const newNickname = prompt(prompt_text, deviceId === currentNickname ? "" : currentNickname);
+
+                            if (newNickname !== null) {
+                                status.innerHTML = `Saving... <span class="spinner"></span>`;
+                                await saveNicknameToSheets(deviceId, newNickname);
+                                status.innerHTML = `<span style="color:var(--success)">Nickname saved!</span>`;
+                                setTimeout(() => loadLogs(), 500);
+                            }
+                        });
+                    });
                 }
 
                 status.textContent = `Loaded ${logs.length} logs.`;
@@ -164,7 +259,6 @@
             return String(s || "").replaceAll("<", "&lt;");
         }
 
-        // Auto load
         loadLogs();
     </script>
 </body>
