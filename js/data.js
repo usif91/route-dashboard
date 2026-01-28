@@ -248,6 +248,43 @@ function haversineMiles(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+
+function calculateScore(item, query, mode) {
+    const haystack = haystackForMode(item, mode);
+    const tokens = tokenizeQuery(query);
+    let totalScore = 0;
+
+    for (const token of tokens) {
+        const alts = state.synonyms.get(token) || [token];
+        let bestScoreForToken = -10000;
+
+        // Find the best match among synonyms for this token
+        let foundAny = false;
+        for (const alt of alts) {
+            const idx = haystack.indexOf(alt);
+            if (idx === -1) continue;
+
+            foundAny = true;
+            let score = 0;
+            // 1. Bonus for start of line
+            if (idx === 0) score += 1000;
+            // 2. Bonus for start of word
+            else if (haystack[idx - 1] === ' ') score += 500;
+
+            // 3. Penalty for distance from start
+            score -= idx;
+
+            if (score > bestScoreForToken) bestScoreForToken = score;
+        }
+
+        // If the token matches (it should, because we filtered), add to total
+        if (foundAny) {
+            totalScore += bestScoreForToken;
+        }
+    }
+    return totalScore;
+}
+
 export function computeMatches() {
     state.nearMode = false;
     state.nearSorted = [];
@@ -263,7 +300,20 @@ export function computeMatches() {
     }
 
     const mode = queryMode(q);
-    state.matches = state.DATA.filter(r => tokenMatch(q, haystackForMode(r, mode)));
+
+    // 1. Filter
+    const filtered = state.DATA.filter(r => tokenMatch(q, haystackForMode(r, mode)));
+
+    // 2. Score and Sort
+    // We map to an object to avoid recalculating scores repeatedly during sort
+    const scored = filtered.map(r => ({
+        data: r,
+        score: calculateScore(r, q, mode)
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+
+    state.matches = scored.map(s => s.data);
     state.shown = 0;
 }
 
