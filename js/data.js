@@ -249,6 +249,7 @@ function haversineMiles(lat1, lon1, lat2, lon2) {
 }
 
 
+
 function calculateScore(item, query, mode) {
     const haystack = haystackForMode(item, mode);
     const tokens = tokenizeQuery(query);
@@ -261,20 +262,35 @@ function calculateScore(item, query, mode) {
         // Find the best match among synonyms for this token
         let foundAny = false;
         for (const alt of alts) {
-            const idx = haystack.indexOf(alt);
-            if (idx === -1) continue;
+            // Find all occurrences of this token as a complete word
+            const haystackTokens = haystack.split(' ');
 
-            foundAny = true;
-            let score = 0;
-            // 1. Bonus for start of line
-            if (idx === 0) score += 1000;
-            // 2. Bonus for start of word
-            else if (haystack[idx - 1] === ' ') score += 500;
+            for (let i = 0; i < haystackTokens.length; i++) {
+                const haystackToken = haystackTokens[i];
 
-            // 3. Penalty for distance from start
-            score -= idx;
+                // Check if the haystack token starts with the search token
+                if (haystackToken.startsWith(alt)) {
+                    foundAny = true;
 
-            if (score > bestScoreForToken) bestScoreForToken = score;
+                    // Calculate the character position in the original haystack
+                    const charPos = haystackTokens.slice(0, i).join(' ').length + (i > 0 ? 1 : 0);
+
+                    let score = 0;
+
+                    // 1. Bonus for start of string
+                    if (charPos === 0) score += 1000;
+                    // 2. Bonus for word boundary (which all these are by definition)
+                    else score += 500;
+
+                    // 3. Bonus for exact match (not just prefix)
+                    if (haystackToken === alt) score += 100;
+
+                    // 4. Penalty for distance from start
+                    score -= charPos;
+
+                    if (score > bestScoreForToken) bestScoreForToken = score;
+                }
+            }
         }
 
         // If the token matches (it should, because we filtered), add to total
@@ -284,6 +300,7 @@ function calculateScore(item, query, mode) {
     }
     return totalScore;
 }
+
 
 export function computeMatches() {
     state.nearMode = false;
