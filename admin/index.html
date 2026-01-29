@@ -193,210 +193,238 @@
             <div id="configWarning" class="config-warning">
                 <strong>Setup Required:</strong> Please open <code>js/config.js</code> and paste your Google Web App
                 URL.
+                \u003c/div\u003e
+
+                <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
+                <button class="refresh-btn" onclick="loadMore()" id="loadMoreBtn"
+                    style="display:none; margin-top:10px; background:rgba(124, 159, 255, 0.2); border:1px solid var(--accent);">Load
+                    More (20)</button>
+                <div id="status" class="meta" style="margin-top:10px;"></div>
+
+                <!-- Desktop table view -->
+                <div class="card table-wrapper" style="box-shadow:none; background:transparent; border:none;">
+                    <table>
+                        <colgroup>
+                            <col style="width:15%">
+                            <col style="width:10%">
+                            <col style="width:20%">
+                            <col style="width:25%">
+                            <col style="width:20%">
+                            <col style="width:10%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User ID</th>
+                                <th>Search Query</th>
+                                <th>Top Result</th>
+                                <th>Intersection</th>
+                                <th>Map</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile card view -->
+                <div id="logBodyMobile"></div>
             </div>
-
-            <button class="refresh-btn" onclick="loadLogs()">Refresh Logs</button>
-            <div id="status" class="meta" style="margin-top:10px;"></div>
-
-            <!-- Desktop table view -->
-            <div class="card table-wrapper" style="box-shadow:none; background:transparent; border:none;">
-                <table>
-                    <colgroup>
-                        <col style="width:15%">
-                        <col style="width:10%">
-                        <col style="width:20%">
-                        <col style="width:25%">
-                        <col style="width:20%">
-                        <col style="width:10%">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>User ID</th>
-                            <th>Search Query</th>
-                            <th>Top Result</th>
-                            <th>Intersection</th>
-                            <th>Map</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logBody"></tbody>
-                </table>
-            </div>
-
-            <!-- Mobile card view -->
-            <div id="logBodyMobile"></div>
         </div>
-    </div>
 
-    <script>
-        // Password protection using SHA-256 hash
-        // Current password: "admin123"
-        // To change: Replace the hash below with a new SHA-256 hash of your desired password
-        // Generate hash at: https://emn178.github.io/online-tools/sha256.html
-        const PASSWORD_HASH = '28d37ad8fab860e9b586193e8c3fc13464abc535e92daa94fd534eee53a08051'; // admin123
+        <script>
+            // Password protection using SHA-256 hash
+            // Current password: "admin123"
+            // To change: Replace the hash below with a new SHA-256 hash of your desired password
+            // Generate hash at: https://emn178.github.io/online-tools/sha256.html
+            const PASSWORD_HASH = '28d37ad8fab860e9b586193e8c3fc13464abc535e92daa94fd534eee53a08051'; // admin123
 
-        async function hashPassword(password) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        async function checkPassword() {
-            const input = document.getElementById('passwordInput').value;
-            const errorDiv = document.getElementById('passwordError');
-
-            if (!input) {
-                errorDiv.textContent = 'Please enter a password';
-                return;
+            async function hashPassword(password) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
 
-            const hash = await hashPassword(input);
+            async function checkPassword() {
+                const input = document.getElementById('passwordInput').value;
+                const errorDiv = document.getElementById('passwordError');
 
-            if (hash === PASSWORD_HASH) {
-                // Store auth in sessionStorage (only lasts for this browser tab session)
-                sessionStorage.setItem('admin_authenticated', 'true');
-                document.getElementById('passwordPrompt').style.display = 'none';
-                document.getElementById('adminContent').style.display = 'block';
-            } else {
-                errorDiv.textContent = 'Incorrect password. Please try again.';
-                document.getElementById('passwordInput').value = '';
-            }
-        }
-
-        // Allow Enter key to submit
-        document.addEventListener('DOMContentLoaded', () => {
-            const passwordInput = document.getElementById('passwordInput');
-            if (passwordInput) {
-                passwordInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        checkPassword();
-                    }
-                });
-                passwordInput.focus();
-            }
-
-            // Check if already authenticated in this session
-            if (sessionStorage.getItem('admin_authenticated') === 'true') {
-                document.getElementById('passwordPrompt').style.display = 'none';
-                document.getElementById('adminContent').style.display = 'block';
-            }
-        });
-    </script>
-
-    <script type="module">
-        import { GOOGLE_SCRIPT_URL } from '../js/config.js';
-
-        const $ = (id) => document.getElementById(id);
-        let nicknamesCache = {};
-
-        async function loadNicknamesFromSheets() {
-            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
-                const stored = localStorage.getItem('device_nicknames');
-                nicknamesCache = stored ? JSON.parse(stored) : {};
-                return;
-            }
-
-            try {
-                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getNicknames`);
-                if (res.ok) {
-                    nicknamesCache = await res.json();
-                    localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
-                } else {
-                    throw new Error('Failed to fetch nicknames');
+                if (!input) {
+                    errorDiv.textContent = 'Please enter a password';
+                    return;
                 }
-            } catch (err) {
-                console.warn('Failed to load nicknames from Google Sheets, using localStorage:', err);
-                const stored = localStorage.getItem('device_nicknames');
-                nicknamesCache = stored ? JSON.parse(stored) : {};
-            }
-        }
 
-        async function saveNicknameToSheets(deviceId, nickname) {
-            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
-                setNicknameLocal(deviceId, nickname);
-                return;
-            }
+                const hash = await hashPassword(input);
 
-            try {
-                const params = new URLSearchParams({
-                    action: 'setNickname',
-                    deviceId: deviceId,
-                    nickname: nickname || ''
-                });
-
-                const res = await fetch(`${GOOGLE_SCRIPT_URL}?${params.toString()}`);
-
-                if (res.ok) {
-                    if (nickname && nickname.trim()) {
-                        nicknamesCache[deviceId] = nickname.trim();
-                    } else {
-                        delete nicknamesCache[deviceId];
-                    }
-                    localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+                if (hash === PASSWORD_HASH) {
+                    // Store auth in sessionStorage (only lasts for this browser tab session)
+                    sessionStorage.setItem('admin_authenticated', 'true');
+                    document.getElementById('passwordPrompt').style.display = 'none';
+                    document.getElementById('adminContent').style.display = 'block';
                 } else {
-                    throw new Error('Failed to save nickname');
+                    errorDiv.textContent = 'Incorrect password. Please try again.';
+                    document.getElementById('passwordInput').value = '';
                 }
-            } catch (err) {
-                console.error('Failed to save nickname to Google Sheets:', err);
-                setNicknameLocal(deviceId, nickname);
-            }
-        }
-
-        function setNicknameLocal(deviceId, nickname) {
-            if (nickname && nickname.trim()) {
-                nicknamesCache[deviceId] = nickname.trim();
-            } else {
-                delete nicknamesCache[deviceId];
-            }
-            localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
-        }
-
-        function getDisplayName(deviceId) {
-            return nicknamesCache[deviceId] || deviceId;
-        }
-
-        window.loadLogs = async function () {
-            const status = $("status");
-            const tbody = $("logBody");
-            const mobileBody = $("logBodyMobile");
-
-            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
-                $("configWarning").style.display = "block";
-                status.innerHTML = `<span style="color:var(--danger)">Configuration Missing</span>`;
-                return;
             }
 
-            status.innerHTML = `Loading from Google Sheets... <span class="spinner"></span>`;
-
-            await loadNicknamesFromSheets();
-
-            try {
-                const res = await fetch(GOOGLE_SCRIPT_URL);
-                if (!res.ok) throw new Error("Failed to fetch");
-
-                const logs = await res.json();
-
-                if (logs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</td></tr>`;
-                    mobileBody.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</div>`;
-                } else {
-                    // Desktop table view
-                    tbody.innerHTML = logs.map(l => {
-                        let timeStr = l.timestamp;
-                        try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
-
-                        let mapLink = "—";
-                        if (l.location) {
-                            mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View</a>`;
+            // Allow Enter key to submit
+            document.addEventListener('DOMContentLoaded', () => {
+                const passwordInput = document.getElementById('passwordInput');
+                if (passwordInput) {
+                    passwordInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            checkPassword();
                         }
+                    });
+                    passwordInput.focus();
+                }
 
-                        const deviceId = l.user || "Unknown";
-                        const displayName = getDisplayName(deviceId);
-                        const isNicknamed = displayName !== deviceId;
+                // Check if already authenticated in this session
+                if (sessionStorage.getItem('admin_authenticated') === 'true') {
+                    document.getElementById('passwordPrompt').style.display = 'none';
+                    document.getElementById('adminContent').style.display = 'block';
+                }
+            });
+        </script>
 
-                        return `
+        <script type="module">
+            import { GOOGLE_SCRIPT_URL } from '../js/config.js';
+
+            const $ = (id) => document.getElementById(id);
+            let nicknamesCache = {};
+            let allLogs = [];
+            let displayedCount = 0;
+            const LOGS_PER_PAGE = 20;
+
+            async function loadNicknamesFromSheets() {
+                if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                    const stored = localStorage.getItem('device_nicknames');
+                    nicknamesCache = stored ? JSON.parse(stored) : {};
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getNicknames`);
+                    if (res.ok) {
+                        nicknamesCache = await res.json();
+                        localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+                    } else {
+                        throw new Error('Failed to fetch nicknames');
+                    }
+                } catch (err) {
+                    console.warn('Failed to load nicknames from Google Sheets, using localStorage:', err);
+                    const stored = localStorage.getItem('device_nicknames');
+                    nicknamesCache = stored ? JSON.parse(stored) : {};
+                }
+            }
+
+            async function saveNicknameToSheets(deviceId, nickname) {
+                if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                    setNicknameLocal(deviceId, nickname);
+                    return;
+                }
+
+                try {
+                    const params = new URLSearchParams({
+                        action: 'setNickname',
+                        deviceId: deviceId,
+                        nickname: nickname || ''
+                    });
+
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?${params.toString()}`);
+
+                    if (res.ok) {
+                        if (nickname && nickname.trim()) {
+                            nicknamesCache[deviceId] = nickname.trim();
+                        } else {
+                            delete nicknamesCache[deviceId];
+                        }
+                        localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+                    } else {
+                        throw new Error('Failed to save nickname');
+                    }
+                } catch (err) {
+                    console.error('Failed to save nickname to Google Sheets:', err);
+                    setNicknameLocal(deviceId, nickname);
+                }
+            }
+
+            function setNicknameLocal(deviceId, nickname) {
+                if (nickname && nickname.trim()) {
+                    nicknamesCache[deviceId] = nickname.trim();
+                } else {
+                    delete nicknamesCache[deviceId];
+                }
+                localStorage.setItem('device_nicknames', JSON.stringify(nicknamesCache));
+            }
+
+            async function copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (err) {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        return true;
+                    } catch (e) {
+                        document.body.removeChild(textArea);
+                        return false;
+                    }
+                }
+            }
+
+            function getDisplayName(deviceId) {
+                return nicknamesCache[deviceId] || deviceId;
+            }
+
+            window.loadLogs = async function () {
+                const status = $("status");
+                const tbody = $("logBody");
+                const mobileBody = $("logBodyMobile");
+
+                if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_")) {
+                    $("configWarning").style.display = "block";
+                    status.innerHTML = `<span style="color:var(--danger)">Configuration Missing</span>`;
+                    return;
+                }
+
+                status.innerHTML = `Loading from Google Sheets... <span class="spinner"></span>`;
+
+                await loadNicknamesFromSheets();
+
+                try {
+                    const res = await fetch(GOOGLE_SCRIPT_URL);
+                    if (!res.ok) throw new Error("Failed to fetch");
+
+                    const logs = await res.json();
+
+                    if (logs.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</td></tr>`;
+                        mobileBody.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted)">No logs found yet.</div>`;
+                    } else {
+                        // Desktop table view
+                        tbody.innerHTML = logs.map(l => {
+                            let timeStr = l.timestamp;
+                            try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
+
+                            let mapLink = "—";
+                            if (l.location) {
+                                mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View</a>`;
+                            }
+
+                            const deviceId = l.user || "Unknown";
+                            const displayName = getDisplayName(deviceId);
+                            const isNicknamed = displayName !== deviceId;
+
+                            return `
                         <tr>
                             <td>${escape(timeStr)}</td>
                             <td>
@@ -412,21 +440,21 @@
                         </tr>
                     `}).join("");
 
-                    // Mobile card view
-                    mobileBody.innerHTML = logs.map(l => {
-                        let timeStr = l.timestamp;
-                        try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
+                        // Mobile card view
+                        mobileBody.innerHTML = logs.map(l => {
+                            let timeStr = l.timestamp;
+                            try { timeStr = new Date(l.timestamp).toLocaleString(); } catch (e) { }
 
-                        const deviceId = l.user || "Unknown";
-                        const displayName = getDisplayName(deviceId);
-                        const isNicknamed = displayName !== deviceId;
+                            const deviceId = l.user || "Unknown";
+                            const displayName = getDisplayName(deviceId);
+                            const isNicknamed = displayName !== deviceId;
 
-                        let mapLink = "—";
-                        if (l.location) {
-                            mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View Map</a>`;
-                        }
+                            let mapLink = "—";
+                            if (l.location) {
+                                mapLink = `<a href="https://www.google.com/maps?q=${l.location}" target="_blank" style="color:var(--accent)">View Map</a>`;
+                            }
 
-                        return `
+                            return `
                         <div class="log-card">
                             <div class="log-card-row">
                                 <span class="log-card-label">Time</span>
@@ -458,40 +486,40 @@
                         </div>
                     `}).join("");
 
-                    // Add event listeners for both desktop and mobile edit buttons
-                    document.querySelectorAll('.edit-nickname-btn, .edit-nickname-btn-mobile').forEach(btn => {
-                        btn.addEventListener('click', async (e) => {
-                            e.stopPropagation();
-                            const deviceId = btn.getAttribute('data-device-id');
-                            const currentNickname = getDisplayName(deviceId);
-                            const prompt_text = deviceId === currentNickname
-                                ? `Enter a nickname for device "${deviceId}":`
-                                : `Edit nickname for device "${deviceId}"\nCurrent: "${currentNickname}"`;
+                        // Add event listeners for both desktop and mobile edit buttons
+                        document.querySelectorAll('.edit-nickname-btn, .edit-nickname-btn-mobile').forEach(btn => {
+                            btn.addEventListener('click', async (e) => {
+                                e.stopPropagation();
+                                const deviceId = btn.getAttribute('data-device-id');
+                                const currentNickname = getDisplayName(deviceId);
+                                const prompt_text = deviceId === currentNickname
+                                    ? `Enter a nickname for device "${deviceId}":`
+                                    : `Edit nickname for device "${deviceId}"\nCurrent: "${currentNickname}"`;
 
-                            const newNickname = prompt(prompt_text, deviceId === currentNickname ? "" : currentNickname);
+                                const newNickname = prompt(prompt_text, deviceId === currentNickname ? "" : currentNickname);
 
-                            if (newNickname !== null) {
-                                status.innerHTML = `Saving... <span class="spinner"></span>`;
-                                await saveNicknameToSheets(deviceId, newNickname);
-                                status.innerHTML = `<span style="color:var(--success)">Nickname saved!</span>`;
-                                setTimeout(() => loadLogs(), 500);
-                            }
+                                if (newNickname !== null) {
+                                    status.innerHTML = `Saving... <span class="spinner"></span>`;
+                                    await saveNicknameToSheets(deviceId, newNickname);
+                                    status.innerHTML = `<span style="color:var(--success)">Nickname saved!</span>`;
+                                    setTimeout(() => loadLogs(), 500);
+                                }
+                            });
                         });
-                    });
+                    }
+
+                    status.textContent = `Loaded ${logs.length} logs.`;
+                } catch (err) {
+                    status.innerHTML = `<span style="color:var(--danger)">Error: ${err.message}</span>. Check console & CORS settings.`;
                 }
+            };
 
-                status.textContent = `Loaded ${logs.length} logs.`;
-            } catch (err) {
-                status.innerHTML = `<span style="color:var(--danger)">Error: ${err.message}</span>. Check console & CORS settings.`;
+            function escape(s) {
+                return String(s || "").replaceAll("<", "&lt;");
             }
-        };
 
-        function escape(s) {
-            return String(s || "").replaceAll("<", "&lt;");
-        }
-
-        loadLogs();
-    </script>
+            loadLogs();
+        </script>
 </body>
 
 </html>
