@@ -22,7 +22,8 @@ export async function logSearch(query, details = {}) {
         query: query,
         topResultSummary: topResult ? `${topResult.Route} (${topResult.YARD})` : "No Match",
         intersection: details.intersection || (topResult ? topResult.STREETSORT : ""),
-        location: details.location ? `${details.location.lat},${details.location.lon}` : ""
+        location: details.location ? `${details.location.lat},${details.location.lon}` : "",
+        sixCar: topResult ? (topResult["6 car"] || "") : ""
     });
 
     const fullUrl = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;

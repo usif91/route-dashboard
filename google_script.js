@@ -18,7 +18,7 @@ function doGet(e) {
 
         // Add header if missing (Updated schema)
         if (sheet.getLastRow() === 0) {
-            sheet.appendRow(["Timestamp", "IP (Simulated)", "Name (Manual)", "Query", "Top Result", "Intersection", "Location"]);
+            sheet.appendRow(["Timestamp", "IP (Simulated)", "Name (Manual)", "Query", "Top Result", "Intersection", "Location", "6-Car Plan"]);
         }
 
         sheet.appendRow([
@@ -28,7 +28,8 @@ function doGet(e) {
             params.query,
             params.topResultSummary || "",
             params.intersection || "",
-            params.location || ""
+            params.location || "",
+            params.sixCar || ""
         ]);
 
         // Return JSON success
@@ -54,7 +55,8 @@ function doGet(e) {
             query: row[3],
             topResultSummary: row[4],
             intersection: row[5],
-            location: row[6]
+            location: row[6],
+            sixCar: row[7]
         };
     });
 

@@ -41,7 +41,17 @@ function handleTableClick(e) {
         const copyRouteStreet = btn.getAttribute("data-copy-route-street");
         if (copyRouteStreet !== null) {
             const [route, street] = String(copyRouteStreet).split("|");
-            copyText(`${route} ${street}`.trim());
+
+            // Check if we are on the Report page
+            if (document.body.classList.contains('report-mode')) {
+                // Format: Date Route Street (e.g., "2/3 27128 Anaheim st & farragut av")
+                const now = new Date();
+                const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+                copyText(`${dateStr} ${route} ${street}`.trim());
+            } else {
+                // Home Page: Copy only intersection
+                copyText(street.trim());
+            }
             return;
         }
     }

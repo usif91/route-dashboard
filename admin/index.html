@@ -177,11 +177,15 @@
     <div id="adminContent" style="display:none;">
         <div
             style="position:fixed; top:2px; right:5px; font-size:10px; color:rgba(255,255,255,0.2); pointer-events:none; z-index:9999;">
-            v2.0</div>
+            v2.1</div>
         <div class="admin-wrap">
             <header
                 style="background:transparent; padding:0; position:relative; box-shadow:none; backdrop-filter:none;">
-                <h1>Traffic Logs</h1>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <h1>Traffic Logs</h1>
+                    <div id="carsInUse"
+                        style="font-size:14px; color:var(--accent); font-weight:bold; padding-bottom:5px;"></div>
+                </div>
                 <div class="meta" style="margin-top:0;">Real-time search activity from Google Sheets</div>
             </header>
 
@@ -202,8 +206,9 @@
                     <colgroup>
                         <col style="width:15%">
                         <col style="width:10%">
+                        <col style="width:15%">
                         <col style="width:20%">
-                        <col style="width:25%">
+                        <col style="width:10%">
                         <col style="width:20%">
                         <col style="width:10%">
                     </colgroup>
@@ -213,6 +218,7 @@
                             <th>User ID</th>
                             <th>Search Query</th>
                             <th>Top Result</th>
+                            <th>6-Car Plan</th>
                             <th>Intersection</th>
                             <th>Map</th>
                         </tr>
@@ -278,6 +284,27 @@
                 document.getElementById('adminContent').style.display = 'block';
             }
         });
+
+        // Determine Cars in Use based on time
+        function updateCarsInUse() {
+            const now = new Date();
+            const minutes = now.getHours() * 60 + now.getMinutes();
+            let label = "2-car"; // Default (10:30 PM - 6:30 AM)
+
+            // 6:30 AM (390) - 2:30 PM (870)
+            if (minutes >= 390 && minutes < 870) {
+                label = "6-car";
+            }
+            // 2:30 PM (870) - 10:30 PM (1350)
+            else if (minutes >= 870 && minutes < 1350) {
+                label = "4-car";
+            }
+
+            const el = document.getElementById('carsInUse');
+            if (el) el.textContent = `Cars in Use: ${label}`;
+        }
+        updateCarsInUse();
+        setInterval(updateCarsInUse, 60000);
     </script>
 
     <script type="module">
@@ -393,6 +420,9 @@
                 const displayName = getDisplayName(deviceId);
                 const isNicknamed = displayName !== deviceId;
 
+                // Strip everything after " (" for the copy value to remove YARD/Division
+                const routeOnly = l.topResultSummary ? l.topResultSummary.split(" (")[0].trim() : "";
+
                 return `
                 <tr>
                     <td>${escape(timeStr)}</td>
@@ -403,7 +433,8 @@
                         </div>
                     </td>
                     <td style="color:var(--accent)">${escape(l.query)}</td>
-                    <td><span class="copy-route" data-route="${escape(l.topResultSummary)}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to copy">${escape(l.topResultSummary)}</span></td>
+                    <td><span class="copy-route" data-route="${escape(routeOnly)}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to copy">${escape(l.topResultSummary)}</span></td>
+                    <td style="color:#ffd700">${escape(l.sixCar || "-")}</td>
                     <td>${escape(l.intersection)}</td>
                     <td>${mapLink}</td>
                 </tr>
@@ -441,8 +472,13 @@
                     </div>
                     <div class="log-card-row">
                         <span class="log-card-label">Result</span>
-                        <span class="log-card-value"><span class="copy-route" data-route="${escape(l.topResultSummary)}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to copy">${escape(l.topResultSummary)}</span></span>
+                        <span class="log-card-value"><span class="copy-route" data-route="${escape(l.topResultSummary ? l.topResultSummary.split(" (")[0].trim() : "")}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to copy">${escape(l.topResultSummary)}</span></span>
                     </div>
+                    ${l.sixCar ? `
+                    <div class="log-card-row">
+                        <span class="log-card-label">6-Car</span>
+                        <span class="log-card-value" style="color:#ffd700">${escape(l.sixCar)}</span>
+                    </div>` : ''}
                     <div class="log-card-row">
                         <span class="log-card-label">Location</span>
                         <span class="log-card-value">${escape(l.intersection)}</span>
