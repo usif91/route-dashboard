@@ -1,5 +1,5 @@
 import { state, loadWorkbook, computeMatches, searchNearMe } from './data.js';
-import { setStatus, updateCounts, renderNext, renderNextNear, renderRows } from './ui.js';
+import { setStatus, updateCounts, renderNext, renderNextNear, renderRows, updateCarHeader } from './ui.js';
 import { escapeHtml } from './utils.js';
 import { logSearch } from './logger.js';
 
@@ -54,7 +54,9 @@ function handleTableClick(e) {
                 // Format: Date Route Street (e.g., "2/3 27128 Anaheim st & farragut av")
                 const now = new Date();
                 const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
-                textToCopy = `${dateStr} ${route} ${street}`.trim();
+
+                // Add new lines as requested
+                textToCopy = `${dateStr}\n${route}\n${street}`.trim();
             } else {
                 // Home Page: Copy only intersection
                 textToCopy = street.trim();
@@ -160,6 +162,7 @@ $("tbody").addEventListener("click", handleTableClick);
 // Init
 loadWorkbook(EXCEL_FILE, setStatus, () => {
     updateCounts();
+    updateCarHeader(); // Dynamic header text
     computeMatches();
     renderNext(true);
 });

@@ -17,7 +17,7 @@ function mapsDirUrl(lat, lon) {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 }
 
-function getHighlightedPlanKey() {
+export function getHighlightedPlanKey() {
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
   const t630 = 6 * 60 + 30;
@@ -27,6 +27,15 @@ function getHighlightedPlanKey() {
   if (mins >= t630 && mins < t1430) return "6 car";
   if (mins >= t1430 && mins < t2230) return "4 car";
   return "2 car";
+}
+
+export function updateCarHeader() {
+  const el = $("th-plan");
+  if (!el) return;
+  const key = getHighlightedPlanKey();
+  // key is "6 car", "4 car", etc. We want "6 Car"
+  const formatted = key.charAt(0).toUpperCase() + key.slice(1).replace("car", "Car");
+  el.textContent = formatted;
 }
 
 function showNoMatch() {
