@@ -71,7 +71,7 @@ export function renderRows(rows, append = false) {
     const streetCell = `
             <div class="cell-flex" style="width:100%; justify-content:space-between;">
               <span>${streetLink}</span>
-              <button class="icon-btn" title="Copy route + streetsort" data-copy-route-street="${formatRoute(r.Route)}|${escapeHtml(r.STREETSORT ?? "")}">⧉</button>
+              <button class="icon-btn" title="Copy route + streetsort" data-copy-route-street="${formatRoute(r.Route)}|${escapeHtml(r.STREETSORT ?? "")}|${r.lat}|${r.lon}">⧉</button>
             </div>
           `;
 

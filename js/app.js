@@ -40,17 +40,56 @@ function handleTableClick(e) {
     if (btn) {
         const copyRouteStreet = btn.getAttribute("data-copy-route-street");
         if (copyRouteStreet !== null) {
-            const [route, street] = String(copyRouteStreet).split("|");
+            const parts = String(copyRouteStreet).split("|");
+            const route = parts[0];
+            const street = parts[1];
+            const lat = parts[2];
+            const lon = parts[3];
+
+            let textToCopy = "";
+            let htmlToCopy = "";
 
             // Check if we are on the Report page
             if (document.body.classList.contains('report-mode')) {
                 // Format: Date Route Street (e.g., "2/3 27128 Anaheim st & farragut av")
                 const now = new Date();
                 const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
-                copyText(`${dateStr} ${route} ${street}`.trim());
+                textToCopy = `${dateStr} ${route} ${street}`.trim();
             } else {
                 // Home Page: Copy only intersection
-                copyText(street.trim());
+                textToCopy = street.trim();
+            }
+
+            // If we have coordinates, create a hyperlink
+            if (lat && lon && lat !== "undefined" && lon !== "undefined") {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+                htmlToCopy = `<a href="${url}">${escapeHtml(textToCopy)}</a>`;
+
+                // Use Clipboard API for rich text
+                try {
+                    const blobHtml = new Blob([htmlToCopy], { type: "text/html" });
+                    const blobText = new Blob([textToCopy], { type: "text/plain" });
+                    const data = [new ClipboardItem({
+                        "text/html": blobHtml,
+                        "text/plain": blobText
+                    })];
+
+                    navigator.clipboard.write(data).then(() => {
+                        setStatus("ok", `Copied (with link): <b>${escapeHtml(textToCopy)}</b>`);
+                        setTimeout(() => setStatus("", ""), 1100);
+                    }).catch(err => {
+                        console.error("Clipboard write failed:", err);
+                        // Fallback to plain text copy
+                        copyText(textToCopy);
+                    });
+                    return;
+                } catch (e) {
+                    console.error("Clipboard API error:", e);
+                    // Fallback to plain text copy
+                    copyText(textToCopy);
+                }
+            } else {
+                copyText(textToCopy);
             }
             return;
         }
