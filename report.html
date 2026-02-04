@@ -2,13 +2,11 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Route Search (Report Mode)</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Route Dashboard (Report)</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        /* Report mode specific styles if needed */
         body.report-mode {
             border-top: 5px solid var(--accent);
         }
@@ -16,47 +14,47 @@
 </head>
 
 <body class="report-mode">
-    <div class="wrap">
-        <header>
-            <div style="font-size:10px; color:rgba(255,255,255,0.2); float:right;">v2.1</div>
-            <h1>Route Search</h1>
-            <div class="meta" id="countInfo">Loading data...</div>
-            <div class="meta" id="status"></div>
-        </header>
-
-        <div class="search-box">
-            <input type="text" id="q" placeholder="Start typing route, yard, or street..." autocomplete="off"
-                autofocus />
+    <div style="font-size:10px; color:rgba(255,255,255,0.2); float:right;">v2.1</div>
+    <header>
+        <div class="wrap">
+            <h1>Route Dashboard</h1>
+            <div class="controls">
+                <input id="q" type="search" placeholder='Search . Example: "3rd jef"' autocomplete="off" />
+                <button id="btnNear">Search near me (top 5)</button>
+            </div>
+            <div id="status" class="meta" style="margin-top:8px;"></div>
         </div>
+    </header>
 
-        <div class="actions">
-            <!--<button id="btnMore" style="display:none;">Load More</button>-->
-            <button id="btnNear">Find Near Me</button>
+    <main>
+        <div class="wrap">
+            <div class="card">
+                <table>
+                    <colgroup>
+                        <col class="route" />
+                        <col class="yard" />
+                        <col class="street" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Car</th>
+                            <th>Intersection</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+                <div class="actions">
+                    <div class="left-actions">
+                        <button id="btnMore">Load more</button>
+                        <span class="note" id="shownNote">—</span>
+                    </div>
+                </div>
+            </div>
         </div>
+    </main>
 
-        <div class="card table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:15%">Route</th>
-                        <th style="width:10%">Yard</th>
-                        <th style="width:40%">Intersection</th>
-                        <th style="width:15%">6 Car</th>
-                        <th style="width:10%">Map</th>
-                        <th style="width:10%">Copy</th>
-                    </tr>
-                </thead>
-                <tbody id="tbody"></tbody>
-            </table>
-        </div>
-
-        <div style="text-align:center; padding:20px;">
-            <button id="btnMore" style="display:none; padding:10px 20px;">Load More</button>
-        </div>
-    </div>
-
-    <!-- Configuration -->
-    <script type="module" src="js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 
