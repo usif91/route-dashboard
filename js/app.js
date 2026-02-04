@@ -65,7 +65,8 @@ function handleTableClick(e) {
             // If we have coordinates, create a hyperlink
             if (lat && lon && lat !== "undefined" && lon !== "undefined") {
                 const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
-                htmlToCopy = `<a href="${url}">${escapeHtml(textToCopy)}</a>`;
+                const htmlSafeText = escapeHtml(textToCopy).replace(/\n/g, "<br>");
+                htmlToCopy = `<a href="${url}">${htmlSafeText}</a>`;
 
                 // Use Clipboard API for rich text
                 try {
