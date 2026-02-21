@@ -318,11 +318,21 @@ tr.zebra-even.detail-row>td {
 
 @media (max-width: 760px) {
     .controls {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    input[type="search"] {
+        flex: 1 1 100%; /* Search bar takes full width on its own line */
     }
 
-    button {
-        width: 100%;
+    #btnNear {
+        flex: 1; /* Location button takes remaining space */
+    }
+
+    #btnForceFetch {
+        flex: 0 0 auto; /* Force fetch button stays small */
     }
 }
 

@@ -127,9 +127,11 @@ $("q").addEventListener("input", (e) => {
 
     if (state.query.trim().length < 2) {
         $("tbody").innerHTML = "";
+        document.querySelector(".card").style.display = "none";
         $("btnMore").disabled = true;
         $("shownNote").textContent = "Type at least 2 letters to search";
     } else {
+        document.querySelector(".card").style.display = "block";
         renderNext(true); // Re-render with new matches
     }
 
@@ -150,6 +152,7 @@ $("btnMore").addEventListener("click", () => {
 
 $("btnNear").addEventListener("click", () => {
     searchNearMe(setStatus, () => {
+        document.querySelector(".card").style.display = "block";
         $("tbody").innerHTML = "";
         renderNextNear();
 
@@ -171,11 +174,14 @@ $("btnForceFetch").addEventListener("click", () => {
         updateCarHeader();
         computeMatches();
         if (state.query && state.query.trim().length >= 2) {
+            document.querySelector(".card").style.display = "block";
             renderNext(true);
         } else if (state.nearMode && state.userPos) {
+            document.querySelector(".card").style.display = "block";
             $("tbody").innerHTML = "";
             renderNextNear();
         } else {
+            document.querySelector(".card").style.display = "none";
             $("tbody").innerHTML = "";
             $("btnMore").disabled = true;
             $("shownNote").textContent = "Data force fetched. Ready to search.";
@@ -192,8 +198,10 @@ loadWorkbook(false, setStatus, () => {
     computeMatches();
 
     if (state.query && state.query.trim().length >= 2) {
+        document.querySelector(".card").style.display = "block";
         renderNext(true);
     } else {
+        document.querySelector(".card").style.display = "none";
         $("tbody").innerHTML = "";
         $("btnMore").disabled = true;
         $("shownNote").textContent = "Type at least 2 letters to search or use Location";
