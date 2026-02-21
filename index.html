@@ -13,9 +13,12 @@
     <header>
         <div class="wrap">
             <h1>Route Dashboard</h1>
-            <div class="controls">
-                <input id="q" type="search" placeholder='Search . Example: "3rd jef"' autocomplete="off" />
-                <button id="btnNear">Search near me (top 5)</button>
+            <div class="controls" style="display: flex; gap: 8px;">
+                <input id="q" style="flex: 1;" type="search" placeholder='Search . Example: "3rd jef"'
+                    autocomplete="off" />
+                <button id="btnNear">Near me (top 5)</button>
+                <button id="btnForceFetch" class="icon-btn" title="Force Fetch Fresh Data"
+                    style="padding: 0 10px; font-size: 1.2rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer;">↻</button>
             </div>
             <div id="status" class="meta" style="margin-top:8px;"></div>
         </div>

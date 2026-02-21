@@ -1,4 +1,4 @@
-import { state, loadWorkbook, computeMatches, searchNearMe } from './data.js';
+import { state, loadWorkbook, computeMatches, searchNearMe, userForceFetch } from './data.js';
 import { setStatus, updateCounts, renderNext, renderNextNear, renderRows, updateCarHeader } from './ui.js';
 import { escapeHtml } from './utils.js';
 import { logSearch } from './logger.js';
@@ -124,7 +124,14 @@ $("q").addEventListener("input", (e) => {
     state.userPos = null;
     setStatus("", "");
     computeMatches();
-    renderNext(true); // Re-render with new matches
+
+    if (state.query.trim().length < 2) {
+        $("tbody").innerHTML = "";
+        $("btnMore").disabled = true;
+        $("shownNote").textContent = "Type at least 2 letters to search";
+    } else {
+        renderNext(true); // Re-render with new matches
+    }
 
     // Logging with debounce (wait 2s after typing stops)
     clearTimeout(logTimeout);
@@ -158,6 +165,24 @@ $("btnNear").addEventListener("click", () => {
     });
 });
 
+$("btnForceFetch").addEventListener("click", () => {
+    userForceFetch(setStatus, () => {
+        updateCounts();
+        updateCarHeader();
+        computeMatches();
+        if (state.query && state.query.trim().length >= 2) {
+            renderNext(true);
+        } else if (state.nearMode && state.userPos) {
+            $("tbody").innerHTML = "";
+            renderNextNear();
+        } else {
+            $("tbody").innerHTML = "";
+            $("btnMore").disabled = true;
+            $("shownNote").textContent = "Data force fetched. Ready to search.";
+        }
+    });
+});
+
 $("tbody").addEventListener("click", handleTableClick);
 
 // Init
@@ -165,5 +190,12 @@ loadWorkbook(false, setStatus, () => {
     updateCounts();
     updateCarHeader(); // Dynamic header text
     computeMatches();
-    renderNext(true);
+
+    if (state.query && state.query.trim().length >= 2) {
+        renderNext(true);
+    } else {
+        $("tbody").innerHTML = "";
+        $("btnMore").disabled = true;
+        $("shownNote").textContent = "Type at least 2 letters to search or use Location";
+    }
 });

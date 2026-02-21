@@ -47,55 +47,65 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
         const timeoutId = setTimeout(() => controller.abort(), 2000);
         let serverVersion = null;
 
-        try {
-            if (JSONBIN_BIN_ID === "YOUR_BIN_ID_HERE") {
-                console.warn("JSONBin not configured. Bypassing fast version check.");
-            } else {
-                const ts = new Date().getTime();
-                const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}?t=${ts}`, {
-                    headers: {
-                        'X-Master-Key': JSONBIN_API_KEY,
-                        'X-Bin-Meta': 'false',
-                        'Cache-Control': 'no-cache'
-                    },
-                    signal: controller.signal
-                });
-                if (versionResp.ok) {
-                    const binData = await versionResp.json();
-                    serverVersion = String(binData.version);
-                } else {
-                    const errText = await versionResp.text();
-                    console.error("JSONBin version fetch failed:", versionResp.status, errText);
-                }
-            }
-            clearTimeout(timeoutId);
-        } catch (e) {
-            console.warn("Fast version check failed or timed out", e);
-        }
-
-        // FALLBACK: If JSONBin fails for any reason (wrong key, quota, parsing error), hit the slow Google App Script check
-        if (!serverVersion) {
-            console.log("Falling back to Google Apps Script for version check...");
-            try {
-                const fallbackController = new AbortController();
-                const fbTimeoutId = setTimeout(() => fallbackController.abort(), 5000);
-                const versionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`, { signal: fallbackController.signal });
-                if (versionResp.ok) {
-                    serverVersion = await versionResp.text();
-                }
-                clearTimeout(fbTimeoutId);
-            } catch (e) {
-                console.error("Fallback Google Apps Script version check failed", e);
-            }
-        }
-
         const cachedData = localStorage.getItem('routeDashboardData');
         const cachedVersion = localStorage.getItem('routeDashboardVersion');
+        const lastFetched = localStorage.getItem('routeDashboardLastFetched');
 
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const cacheIsFresh = lastFetched && (now - parseInt(lastFetched, 10) < SEVEN_DAYS_MS);
+
+        if (cacheIsFresh && cachedData) {
+            console.log("Cache is less than 7 days old. Skipping JSONBin check.");
+            serverVersion = cachedVersion; // Force a match to skip pulling new data
+        } else {
+            try {
+                if (JSONBIN_BIN_ID === "YOUR_BIN_ID_HERE") {
+                    console.warn("JSONBin not configured. Bypassing fast version check.");
+                } else {
+                    const ts = new Date().getTime();
+                    const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}?t=${ts}`, {
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY,
+                            'X-Bin-Meta': 'false',
+                            'Cache-Control': 'no-cache'
+                        },
+                        signal: controller.signal
+                    });
+                    if (versionResp.ok) {
+                        const binData = await versionResp.json();
+                        serverVersion = String(binData.version);
+                    } else {
+                        const errText = await versionResp.text();
+                        console.error("JSONBin version fetch failed:", versionResp.status, errText);
+                    }
+                }
+                clearTimeout(timeoutId);
+            } catch (e) {
+                console.warn("Fast version check failed or timed out", e);
+            }
+
+            // FALLBACK: If JSONBin fails
+            if (!serverVersion) {
+                console.log("Falling back to Google Apps Script for version check...");
+                try {
+                    const fallbackController = new AbortController();
+                    const fbTimeoutId = setTimeout(() => fallbackController.abort(), 5000);
+                    const versionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`, { signal: fallbackController.signal });
+                    if (versionResp.ok) {
+                        serverVersion = await versionResp.text();
+                    }
+                    clearTimeout(fbTimeoutId);
+                } catch (e) {
+                    console.error("Fallback Google Apps Script version check failed", e);
+                }
+            }
+        }
+        // Removed redundant const declarations
         let json;
 
         if (cachedData && serverVersion && cachedVersion === serverVersion) {
-            console.log("Using cached data. Exact match found:");
+            console.log("Using cached data. Exact match found (or cache freshness forced match):");
             console.log("-> cachedVersion (localStorage):", cachedVersion, typeof cachedVersion);
             console.log("-> serverVersion (JSONBin):", serverVersion, typeof serverVersion);
             json = JSON.parse(cachedData);
@@ -116,6 +126,7 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
                     localStorage.setItem('routeDashboardVersion', serverVersion);
                 }
                 localStorage.setItem('routeDashboardData', JSON.stringify(json));
+                localStorage.setItem('routeDashboardLastFetched', Date.now().toString());
             } catch (e) {
                 console.warn("Could not save to localStorage (quota exceeded?)", e);
             }
@@ -474,5 +485,34 @@ export async function adminForceUpdate(setStatusCallback) {
     } catch (err) {
         if (setStatusCallback) setStatusCallback("error", `Failed to publish update: ${err.message}`);
         console.error("Force update failed:", err);
+    }
+}
+
+export async function userForceFetch(setStatusCallback, renderCallback) {
+    if (setStatusCallback) setStatusCallback("muted", `Force fetching live data from Google Sheets… <span class="spinner"></span>`);
+    try {
+        const { GOOGLE_SCRIPT_URL } = await import('./config.js');
+
+        const respData = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
+        if (!respData.ok) throw new Error(`Fetch failed (${respData.status})`);
+
+        const json = await respData.json();
+
+        const newVersionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`);
+        if (newVersionResp.ok) {
+            const newVersion = await newVersionResp.text();
+            localStorage.setItem('routeDashboardVersion', newVersion);
+        }
+
+        localStorage.setItem('routeDashboardData', JSON.stringify(json));
+        localStorage.setItem('routeDashboardLastFetched', Date.now().toString());
+
+        processSheets(json);
+        if (setStatusCallback) setStatusCallback("ok", `Loaded ${state.DATA.length.toLocaleString()} fresh rows directly from server.`);
+        if (renderCallback) renderCallback();
+
+    } catch (err) {
+        if (setStatusCallback) setStatusCallback("error", `Force fetch failed: ${err.message}`);
+        console.error("User Force Fetch error:", err);
     }
 }
