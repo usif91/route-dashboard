@@ -57,8 +57,29 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
                 if (setStatusCallback) setStatusCallback("error", `Cache corrupted. Waiting for Admin update.`);
             }
         } else {
-            if (setStatusCallback) setStatusCallback("error", `No data found. Please ask an Admin to publish updates.`);
-            state.DATA = [];
+            // FALLBACK: If cache is completely empty, fetch from Google Sheets ONE TIME to seed it
+            if (setStatusCallback) setStatusCallback("muted", `Initial load from server… <span class="spinner"></span>`);
+            try {
+                const { GOOGLE_SCRIPT_URL } = await import('./config.js');
+                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
+                if (!resp.ok) throw new Error(`Fetch failed (${resp.status})`);
+
+                const json = await resp.json();
+                localStorage.setItem('routeDashboardData', JSON.stringify(json));
+
+                // Try grabbing version too, though not strictly necessary since admin pushes updates
+                try {
+                    const vResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`);
+                    if (vResp.ok) localStorage.setItem('routeDashboardVersion', await vResp.text());
+                } catch (e) { }
+
+                processSheets(json);
+                if (setStatusCallback) setStatusCallback("ok", `Loaded ${state.DATA.length.toLocaleString()} rows.`);
+            } catch (err) {
+                console.error("Fallback fetch failed", err);
+                if (setStatusCallback) setStatusCallback("error", `Could not load data. ${err.message}`);
+                state.DATA = [];
+            }
         }
 
         if (callback) callback();
