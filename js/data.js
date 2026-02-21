@@ -52,7 +52,7 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
                 console.warn("JSONBin not configured. Bypassing fast version check.");
             } else {
                 const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-                    headers: { 'X-Access-Key': JSONBIN_API_KEY },
+                    headers: { 'X-Master-Key': JSONBIN_API_KEY },
                     signal: controller.signal
                 });
                 if (versionResp.ok) {
@@ -422,7 +422,7 @@ export async function adminForceUpdate(setStatusCallback) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Access-Key': JSONBIN_API_KEY
+                'X-Master-Key': JSONBIN_API_KEY
             },
             body: JSON.stringify({ version: newVersion })
         });
