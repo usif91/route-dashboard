@@ -30,6 +30,23 @@ header {
     background: linear-gradient(to bottom, rgba(11, 13, 18, 0.95), rgba(11, 13, 18, 0.72), rgba(11, 13, 18, 0));
     backdrop-filter: blur(10px);
     z-index: 10;
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+header.empty-state {
+    position: fixed;
+    top: 40%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    background: transparent;
+    backdrop-filter: none;
+}
+
+header.empty-state h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
 }
 
 .wrap {
@@ -319,24 +336,26 @@ tr.zebra-even.detail-row>td {
 @media (max-width: 760px) {
     .controls {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column;
+        gap: 12px;
     }
-    
+
     input[type="search"] {
-        flex: 1 1 100%; /* Search bar takes full width on its own line */
+        flex: 1 1 100%;
+        font-size: 16px;
+        /* Prevents iOS zoom */
+        padding: 14px 12px;
     }
 
     #btnNear {
-        flex: 1; /* Location button takes remaining space */
-    }
-
-    #btnForceFetch {
-        flex: 0 0 auto; /* Force fetch button stays small */
+        flex: 1 1 100%;
+        padding: 14px 12px;
+        font-size: 16px;
     }
 }
 
 /* Reserve space for status so it doesn't push content */
 #status {
     min-height: 34px;
+    text-align: center;
 }
