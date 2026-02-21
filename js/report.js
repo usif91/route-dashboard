@@ -264,11 +264,19 @@ async function fetchTickets() {
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ action: "getReports" })
         });
-        openTickets = await resp.json();
+        const rawText = await resp.text();
+        console.log("Raw getReports response:", rawText);
+        try {
+            openTickets = JSON.parse(rawText);
+        } catch (parseErr) {
+            console.error("Failed to parse JSON:", parseErr);
+            container.innerHTML = `<div class="error" style="text-align: center; padding: 20px;">Could not read Google sheet data. Server said:<br><pre style="font-size:10px;text-align:left;">${rawText.substring(0, 200)}</pre></div>`;
+            return;
+        }
         renderTickets();
     } catch (e) {
         console.error("Fetch tickets error", e);
-        container.innerHTML = `<div class="error" style="text-align: center; padding: 20px;">Failed to load tickets.</div>`;
+        container.innerHTML = `<div class="error" style="text-align: center; padding: 20px;">Failed to load tickets. ${e.message}</div>`;
     }
 }
 

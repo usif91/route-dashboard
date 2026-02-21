@@ -176,6 +176,13 @@ function submitReport(data) {
     if (!sheet) {
         sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Reports");
         sheet.appendRow(["Timestamp", "Status", "Route", "Intersection", "Lat", "Lon", "ProblemType", "Details", "LocationNotes", "AdditionalNotes", "DeviceID"]);
+    } else {
+        // Self-healing: If sheet exists but has no headers, insert them
+        const firstCell = sheet.getRange(1, 1).getValue();
+        if (firstCell !== "Timestamp") {
+            sheet.insertRowBefore(1);
+            sheet.getRange(1, 1, 1, 11).setValues([["Timestamp", "Status", "Route", "Intersection", "Lat", "Lon", "ProblemType", "Details", "LocationNotes", "AdditionalNotes", "DeviceID"]]);
+        }
     }
 
     const timestamp = new Date();
@@ -200,6 +207,15 @@ function getReports() {
     let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Reports");
     if (!sheet) {
         return ContentService.createTextOutput("[]").setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Self-healing check for getReports as well
+    if (sheet.getLastRow() > 0) {
+        const firstCell = sheet.getRange(1, 1).getValue();
+        if (firstCell !== "Timestamp") {
+            sheet.insertRowBefore(1);
+            sheet.getRange(1, 1, 1, 11).setValues([["Timestamp", "Status", "Route", "Intersection", "Lat", "Lon", "ProblemType", "Details", "LocationNotes", "AdditionalNotes", "DeviceID"]]);
+        }
     }
 
     const data = sheet.getDataRange().getValues();
@@ -245,6 +261,13 @@ function resolveReport(data) {
     let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Reports");
     if (!sheet) {
         return ContentService.createTextOutput(JSON.stringify({ success: false, message: "Reports sheet not found" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check self-healing to prevent off-by-one errors
+    const firstCell = sheet.getRange(1, 1).getValue();
+    if (firstCell !== "Timestamp") {
+        sheet.insertRowBefore(1);
+        sheet.getRange(1, 1, 1, 11).setValues([["Timestamp", "Status", "Route", "Intersection", "Lat", "Lon", "ProblemType", "Details", "LocationNotes", "AdditionalNotes", "DeviceID"]]);
     }
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
