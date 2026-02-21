@@ -51,7 +51,8 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
             if (JSONBIN_BIN_ID === "YOUR_BIN_ID_HERE") {
                 console.warn("JSONBin not configured. Bypassing fast version check.");
             } else {
-                const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                const ts = new Date().getTime();
+                const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${ts}`, {
                     headers: {
                         'X-Master-Key': JSONBIN_API_KEY,
                         'Cache-Control': 'no-cache'
