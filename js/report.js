@@ -258,7 +258,10 @@ async function fetchTickets() {
     container.innerHTML = `<div class="status-msg" style="text-align: center; padding: 20px; color: var(--muted);">Loading tickets... <span class="spinner"></span></div>`;
 
     try {
-        const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getReports`);
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "getReports" })
+        });
         openTickets = await resp.json();
         renderTickets();
     } catch (e) {

@@ -80,6 +80,10 @@ function doPost(e) {
         return resolveReport(data);
     }
 
+    if (action === "getReports") {
+        return getReports();
+    }
+
     if (action === "log") {
         return logSearch(data);
     }
