@@ -449,15 +449,32 @@ export async function adminForceUpdate(setStatusCallback) {
     if (setStatusCallback) setStatusCallback("muted", `Publishing update to clients… <span class="spinner"></span>`);
     try {
         const { GOOGLE_SCRIPT_URL } = await import('./config.js');
-        const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=forceUpdateVersion`, { method: 'POST' });
 
-        if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+        // 1. Tell server to bump the version
+        const respVersion = await fetch(`${GOOGLE_SCRIPT_URL}?action=forceUpdateVersion`, { method: 'POST' });
+        if (!respVersion.ok) throw new Error(`Server returned ${respVersion.status}`);
 
-        // Also clear local cache so the admin fetches fresh data on next reload just in case
-        localStorage.removeItem('routeDashboardData');
-        localStorage.removeItem('routeDashboardVersion');
+        // 2. Actually fetch the freshly updated data for the cache
+        const respData = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
+        if (!respData.ok) throw new Error(`Fetch failed (${respData.status})`);
 
-        if (setStatusCallback) setStatusCallback("ok", `Update published. Clients will refresh their data on next load.`);
+        const json = await respData.json();
+
+        // 3. Update the local cache with the new data
+        localStorage.setItem('routeDashboardData', JSON.stringify(json));
+
+        // 4. Update the local version tag
+        const newVersionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`);
+        if (newVersionResp.ok) {
+            const newVersion = await newVersionResp.text();
+            localStorage.setItem('routeDashboardVersion', newVersion);
+        }
+
+        // 5. Broadcast to all open tabs that new data is available in cache
+        const channel = new BroadcastChannel('route_dashboard_updates');
+        channel.postMessage('update_available');
+
+        if (setStatusCallback) setStatusCallback("ok", `Update published. Clients will refresh their data instantly.`);
     } catch (err) {
         if (setStatusCallback) setStatusCallback("error", `Failed to publish update: ${err.message}`);
         console.error("Force update failed:", err);
