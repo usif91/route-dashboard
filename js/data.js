@@ -95,9 +95,15 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
         let json;
 
         if (cachedData && serverVersion && cachedVersion === serverVersion) {
-            console.log("Using cached data, version:", cachedVersion);
+            console.log("Using cached data. Exact match found:");
+            console.log("-> cachedVersion (localStorage):", cachedVersion, typeof cachedVersion);
+            console.log("-> serverVersion (JSONBin):", serverVersion, typeof serverVersion);
             json = JSON.parse(cachedData);
         } else {
+            console.log("Cache MISMATCH or missing data. Forcing fetch.");
+            console.log("-> cachedVersion:", cachedVersion, typeof cachedVersion);
+            console.log("-> serverVersion:", serverVersion, typeof serverVersion);
+            console.log("-> cachedData exists:", !!cachedData);
             if (setStatusCallback) setStatusCallback("muted", `Fetching new data from Google Sheets… <span class="spinner"></span>`);
             const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
             if (!resp.ok) throw new Error(`Fetch failed (${resp.status})`);
