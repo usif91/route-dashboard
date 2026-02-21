@@ -157,8 +157,8 @@ tbody.addEventListener("click", (e) => {
     // Populate form
     document.getElementById("reportIntersection").value = rowData.STREETSORT;
     document.getElementById("reportRoute").value = rowData.Route;
-    document.getElementById("reportLat").value = rowData.Lat;
-    document.getElementById("reportLon").value = rowData.Lon;
+    document.getElementById("reportLat").value = rowData.lat || "";
+    document.getElementById("reportLon").value = rowData.lon || "";
 
     // Hide search, show form
     searchCard.style.display = "none";
@@ -326,7 +326,7 @@ function renderTickets() {
                 <span>•</span>
                 <span><strong>Type:</strong> ${t.ProblemType}</span>
                 <span>•</span>
-                <span>${new Date(t.Timestamp).toLocaleDateString()}</span>
+                <span>${new Date(t.Timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(t.Timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
             </div>
             
             <div class="ticket-details">
