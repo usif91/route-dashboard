@@ -62,11 +62,30 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
                 if (versionResp.ok) {
                     const binData = await versionResp.json();
                     serverVersion = binData.record.version;
+                } else {
+                    const errText = await versionResp.text();
+                    console.error("JSONBin version fetch failed:", versionResp.status, errText);
                 }
             }
             clearTimeout(timeoutId);
         } catch (e) {
             console.warn("Fast version check failed or timed out", e);
+        }
+
+        // FALLBACK: If JSONBin fails for any reason (wrong key, quota, parsing error), hit the slow Google App Script check
+        if (!serverVersion) {
+            console.log("Falling back to Google Apps Script for version check...");
+            try {
+                const fallbackController = new AbortController();
+                const fbTimeoutId = setTimeout(() => fallbackController.abort(), 5000);
+                const versionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`, { signal: fallbackController.signal });
+                if (versionResp.ok) {
+                    serverVersion = await versionResp.text();
+                }
+                clearTimeout(fbTimeoutId);
+            } catch (e) {
+                console.error("Fallback Google Apps Script version check failed", e);
+            }
         }
 
         const cachedData = localStorage.getItem('routeDashboardData');
