@@ -229,6 +229,7 @@ btnSubmitReport.addEventListener("click", async () => {
     try {
         const resp = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
         });
         const result = await resp.json();
@@ -260,6 +261,7 @@ async function fetchTickets() {
     try {
         const resp = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ action: "getReports" })
         });
         openTickets = await resp.json();
@@ -342,6 +344,7 @@ window.resolveTicket = async function (rowIndex, btnEl) {
     try {
         const resp = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ action: "resolveReport", rowIndex: rowIndex })
         });
         const result = await resp.json();
