@@ -38,89 +38,31 @@ function safeDecode(s) {
 
 // Loading from Google Sheets now
 export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
-    if (setStatusCallback) setStatusCallback("muted", `Loading data… <span class="spinner"></span>`);
+    if (setStatusCallback) setStatusCallback("muted", `Checking for updates… <span class="spinner"></span>`);
+    try {
+        const { GOOGLE_SCRIPT_URL, JSONBIN_BIN_ID, JSONBIN_API_KEY } = await import('./config.js');
 
-    // Broadcast Channel for cross-tab sync
-    const channel = new BroadcastChannel('route_dashboard_updates');
+        // Check version first from lightning-fast JSONBin
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        let serverVersion = null;
 
-    if (!isAdmin) {
-        // HOMEPAGE / DISPATCH: Pure Local Storage + Broadcast Listen
-        const cachedData = localStorage.getItem('routeDashboardData');
-
-        if (cachedData) {
-            try {
-                const json = JSON.parse(cachedData);
-                processSheets(json);
-                if (setStatusCallback) setStatusCallback("ok", `Loaded ${state.DATA.length.toLocaleString()} rows from cache.`);
-            } catch (e) {
-                console.warn("Failed to parse cached data", e);
-                if (setStatusCallback) setStatusCallback("error", `Cache corrupted. Waiting for Admin update.`);
-            }
-        } else {
-            // FALLBACK: If cache is completely empty, fetch from Google Sheets ONE TIME to seed it
-            if (setStatusCallback) setStatusCallback("muted", `Initial load from server… <span class="spinner"></span>`);
-            try {
-                const { GOOGLE_SCRIPT_URL } = await import('./config.js');
-                const resp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
-                if (!resp.ok) throw new Error(`Fetch failed (${resp.status})`);
-
-                const json = await resp.json();
-                localStorage.setItem('routeDashboardData', JSON.stringify(json));
-
-                // Try grabbing version too, though not strictly necessary since admin pushes updates
-                try {
-                    const vResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`);
-                    if (vResp.ok) localStorage.setItem('routeDashboardVersion', await vResp.text());
-                } catch (e) { }
-
-                processSheets(json);
-                if (setStatusCallback) setStatusCallback("ok", `Loaded ${state.DATA.length.toLocaleString()} rows.`);
-            } catch (err) {
-                console.error("Fallback fetch failed", err);
-                if (setStatusCallback) setStatusCallback("error", `Could not load data. ${err.message}`);
-                state.DATA = [];
-            }
-        }
-
-        if (callback) callback();
-
-        // Listen for admin publishes
-        channel.onmessage = (event) => {
-            if (event.data === 'update_available') {
-                console.log("Update received from Admin tab!");
-                const newData = localStorage.getItem('routeDashboardData');
-                if (newData) {
-                    try {
-                        const json = JSON.parse(newData);
-                        processSheets(json);
-                        if (setStatusCallback) {
-                            setStatusCallback("ok", `Updated to latest data (${state.DATA.length.toLocaleString()} rows).`);
-                            setTimeout(() => setStatusCallback("", ""), 3000);
-                        }
-                        if (callback) callback(); // re-render UI
-                    } catch (e) {
-                        console.error("Failed to parse newly broadcasted data", e);
-                    }
+        try {
+            if (JSONBIN_BIN_ID === "YOUR_BIN_ID_HERE") {
+                console.warn("JSONBin not configured. Bypassing fast version check.");
+            } else {
+                const versionResp = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: { 'X-Access-Key': JSONBIN_API_KEY },
+                    signal: controller.signal
+                });
+                if (versionResp.ok) {
+                    const binData = await versionResp.json();
+                    serverVersion = binData.record.version;
                 }
             }
-        };
-        return;
-    }
-
-    // ADMIN PANEL: Full Sync + Broadcast Sender
-    try {
-        const { GOOGLE_SCRIPT_URL } = await import('./config.js');
-
-        // Check version first (timeout to avoid hanging forever)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        let serverVersion = null;
-        try {
-            const versionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`, { signal: controller.signal });
-            serverVersion = await versionResp.text();
             clearTimeout(timeoutId);
         } catch (e) {
-            console.warn("Version check failed or timed out", e);
+            console.warn("Fast version check failed or timed out", e);
         }
 
         const cachedData = localStorage.getItem('routeDashboardData');
@@ -144,8 +86,6 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
                     localStorage.setItem('routeDashboardVersion', serverVersion);
                 }
                 localStorage.setItem('routeDashboardData', JSON.stringify(json));
-                // We fetched new data, tell other tabs
-                channel.postMessage('update_available');
             } catch (e) {
                 console.warn("Could not save to localStorage (quota exceeded?)", e);
             }
@@ -469,11 +409,24 @@ export function searchNearMe(setStatusCallback, renderCallback) {
 export async function adminForceUpdate(setStatusCallback) {
     if (setStatusCallback) setStatusCallback("muted", `Publishing update to clients… <span class="spinner"></span>`);
     try {
-        const { GOOGLE_SCRIPT_URL } = await import('./config.js');
+        const { GOOGLE_SCRIPT_URL, JSONBIN_BIN_ID, JSONBIN_API_KEY } = await import('./config.js');
 
-        // 1. Tell server to bump the version
-        const respVersion = await fetch(`${GOOGLE_SCRIPT_URL}?action=forceUpdateVersion`, { method: 'POST' });
-        if (!respVersion.ok) throw new Error(`Server returned ${respVersion.status}`);
+        if (JSONBIN_BIN_ID === "YOUR_BIN_ID_HERE") {
+            throw new Error("JSONBin is not configured in config.js");
+        }
+
+        const newVersion = new Date().getTime().toString();
+
+        // 1. Tell JSONBin to bump the global version
+        const respVersion = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Access-Key': JSONBIN_API_KEY
+            },
+            body: JSON.stringify({ version: newVersion })
+        });
+        if (!respVersion.ok) throw new Error(`Version update failed (${respVersion.status})`);
 
         // 2. Actually fetch the freshly updated data for the cache
         const respData = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
@@ -484,18 +437,10 @@ export async function adminForceUpdate(setStatusCallback) {
         // 3. Update the local cache with the new data
         localStorage.setItem('routeDashboardData', JSON.stringify(json));
 
-        // 4. Update the local version tag
-        const newVersionResp = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVersion`);
-        if (newVersionResp.ok) {
-            const newVersion = await newVersionResp.text();
-            localStorage.setItem('routeDashboardVersion', newVersion);
-        }
+        // 4. Update the local version tag to match what we just published
+        localStorage.setItem('routeDashboardVersion', newVersion);
 
-        // 5. Broadcast to all open tabs that new data is available in cache
-        const channel = new BroadcastChannel('route_dashboard_updates');
-        channel.postMessage('update_available');
-
-        if (setStatusCallback) setStatusCallback("ok", `Update published. Clients will refresh their data instantly.`);
+        if (setStatusCallback) setStatusCallback("ok", `Update published. Clients will refresh their data on next load.`);
     } catch (err) {
         if (setStatusCallback) setStatusCallback("error", `Failed to publish update: ${err.message}`);
         console.error("Force update failed:", err);
