@@ -165,7 +165,7 @@
         const color = mode === "yard" ? yardColors[key] || "#999" : getColorBy6Car(key);
 
         const popupHtml = `<b>Intersection:</b> ${pt.STREETSORT || "N/A"}<br>` +
-          `<b>Route:</b> ${pt.Route || "N/A"}<br>` +
+          `<b>Route:</b> ${pt.ROUTE || "N/A"}<br>` +
           `<b>YARD:</b> ${pt.YARD || "N/A"}<br>` +
           `<b>6 Car:</b> ${pt["6car"] || "N/A"}`;
 
@@ -270,5 +270,6 @@
   </script>
 
 </body>
+
 
 </html>
