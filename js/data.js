@@ -46,7 +46,7 @@ export async function loadWorkbook(isAdmin, setStatusCallback, callback) {
         const lastFetched = localStorage.getItem('routeDashboardLastFetched');
 
         //const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-	const SEVEN_DAYS_MS = 1000;
+		const SEVEN_DAYS_MS = 60 * 1000;
         const now = Date.now();
         const cacheIsFresh = lastFetched && (now - parseInt(lastFetched, 10) < SEVEN_DAYS_MS);
 
@@ -456,3 +456,4 @@ export async function userForceFetch(setStatusCallback, renderCallback) {
         console.error("User Force Fetch error:", err);
     }
 }
+
