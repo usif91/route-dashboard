@@ -326,15 +326,41 @@ function renderTickets() {
             distHtml = `<span class="pill" style="font-size: 11px;">📍 ${(t._dist / 1609.34).toFixed(1)} mi</span>`;
         }
 
+        // Build the problem headline (big focus)
+        let problemHeadline = t.ProblemType || 'Unknown Problem';
+        if (t.Details) {
+            problemHeadline = t.Details;
+            if (t.ProblemType && t.ProblemType !== t.Details) {
+                problemHeadline = `${t.Details}`;
+            }
+        }
+
+        // Build clickable intersection (links to Google Maps coordinates)
+        const lat = parseFloat(t.Lat);
+        const lon = parseFloat(t.Lon);
+        let intersectionHtml;
+        if (!isNaN(lat) && !isNaN(lon)) {
+            intersectionHtml = `<a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent);" title="Open in Google Maps">${t.Intersection || 'Unknown Location'} ↗</a>`;
+        } else {
+            intersectionHtml = `<span>${t.Intersection || 'Unknown Location'}</span>`;
+        }
+
+        // Build clickable route number (copies to clipboard)
+        const routeHtml = `<span class="route-copy" onclick="event.stopPropagation(); navigator.clipboard.writeText('${(t.Route || '').replace(/'/g, "\\'")}').then(() => { this.classList.add('copied'); this.setAttribute('data-tooltip','Copied!'); setTimeout(() => { this.classList.remove('copied'); this.removeAttribute('data-tooltip'); }, 1200); })" style="cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); position: relative;" title="Click to copy route number">${t.Route || '—'}</span>`;
+
         return `
         <div class="ticket-card" data-row-index="${t._rowIndex}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <h3>${t.Intersection || 'Unknown Location'}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                <div style="font-size: 20px; font-weight: 700; color: #fff; line-height: 1.3;">${problemHeadline}</div>
                 ${distHtml}
+            </div>
+
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">
+                ${intersectionHtml}
             </div>
             
             <div class="ticket-meta">
-                <span><strong>Rte:</strong> ${t.Route}</span>
+                <span><strong>Rte:</strong> ${routeHtml}</span>
                 <span>•</span>
                 <span><strong>Type:</strong> ${t.ProblemType}</span>
                 <span>•</span>
@@ -342,7 +368,6 @@ function renderTickets() {
             </div>
             
             <div class="ticket-details">
-                <strong>Details:</strong> ${t.Details}<br>
                 ${t.LocationNotes ? `<strong>Location:</strong> ${t.LocationNotes}<br>` : ''}
                 ${t.AdditionalNotes ? `<strong>Notes:</strong> ${t.AdditionalNotes}` : ''}
             </div>

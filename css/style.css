@@ -470,3 +470,47 @@ tr.zebra-even.detail-row>td {
     background: rgba(45, 212, 191, 0.25);
     border-color: var(--ok);
 }
+
+/* Route copy click feedback */
+.route-copy:hover {
+    color: #fff;
+}
+
+.route-copy.copied {
+    color: var(--ok) !important;
+    border-color: var(--ok) !important;
+}
+
+.route-copy.copied::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ok);
+    color: #000;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: fadeInUp 0.2s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Hide empty ticket details */
+.ticket-details:empty {
+    display: none;
+}

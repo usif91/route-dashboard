@@ -141,27 +141,29 @@ function getLogs() {
 }
 
 function logSearch(data) {
-    // Requires a sheet named "logs"
-    // Columns: [Timestamp, IP/DeviceID (if tracked), Query, Matches, UserLat, UserLon, TopResult, ExecutionTimeInMs, AppVersion]
     let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("logs");
     if (!sheet) {
         sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("logs");
-        sheet.appendRow(["Timestamp", "DeviceID", "Query", "AppVersion", "QueryTimeMs", "TopResult", "Lat", "Lon"]);
+        sheet.appendRow(["Timestamp", "Source ", "User ", "Query ", "Top Result", "Intersection ", "Location ", "6 Car"]);
+    } else {
+        const firstCell = sheet.getRange(1, 1).getValue();
+        if (firstCell !== "Timestamp") {
+            sheet.insertRowBefore(1);
+            sheet.getRange(1, 1, 1, 8).setValues([["Timestamp", "Source ", "User ", "Query ", "Top Result", "Intersection ", "Location ", "6 Car"]]);
+        }
     }
 
     const timestamp = new Date();
-    const isNearMe = data.query === "Search Near Me";
 
-    // Flatten properties to append to row
     sheet.appendRow([
         timestamp,
-        data.deviceId || "Unknown",
+        data.source || "",
+        data.user || "",
         data.query || "",
-        data.appVersion || "2.1",
-        data.clientQueryTimeMs || 0,
-        data.topResult || "",
-        data.location ? (data.location.lat + "," + data.location.lon) : "",
-        data.intersection || ""
+        data.topResultSummary || "",
+        data.intersection || "",
+        data.location || "",
+        data.sixCar || ""
     ]);
 
     return ContentService.createTextOutput("Log recorded").setMimeType(ContentService.MimeType.TEXT);
