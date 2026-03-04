@@ -346,7 +346,8 @@ function renderTickets() {
         }
 
         // Build clickable route number (copies to clipboard)
-        const routeHtml = `<span class="route-copy" onclick="event.stopPropagation(); navigator.clipboard.writeText('${(t.Route || '').replace(/'/g, "\\'")}').then(() => { this.classList.add('copied'); this.setAttribute('data-tooltip','Copied!'); setTimeout(() => { this.classList.remove('copied'); this.removeAttribute('data-tooltip'); }, 1200); })" style="cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); position: relative;" title="Click to copy route number">${t.Route || '—'}</span>`;
+        const routeStr = String(t.Route || '');
+        const routeHtml = `<span class="route-copy" onclick="event.stopPropagation(); navigator.clipboard.writeText('${routeStr.replace(/'/g, "\\'")}').then(() => { this.classList.add('copied'); this.setAttribute('data-tooltip','Copied!'); setTimeout(() => { this.classList.remove('copied'); this.removeAttribute('data-tooltip'); }, 1200); })" style="cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); position: relative;" title="Click to copy route number">${t.Route || '—'}</span>`;
 
         return `
         <div class="ticket-card" data-row-index="${t._rowIndex}">
