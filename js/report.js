@@ -345,6 +345,11 @@ function renderTickets() {
             intersectionHtml = `<span>${t.Intersection || 'Unknown Location'}</span>`;
         }
 
+        // Look up the 6-car plan from the main data
+        const routeNum = parseInt(t.Route, 10);
+        const matchedRow = state.DATA.find(r => Number(r.Route) === routeNum);
+        const sixCarPlan = matchedRow ? (matchedRow["6 car"] || '') : '';
+
         // Build clickable route number (copies to clipboard)
         const routeStr = String(t.Route || '');
         const routeHtml = `<span class="route-copy" onclick="event.stopPropagation(); navigator.clipboard.writeText('${routeStr.replace(/'/g, "\\'")}').then(() => { this.classList.add('copied'); this.setAttribute('data-tooltip','Copied!'); setTimeout(() => { this.classList.remove('copied'); this.removeAttribute('data-tooltip'); }, 1200); })" style="cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); position: relative;" title="Click to copy route number">${t.Route || '—'}</span>`;
@@ -362,6 +367,7 @@ function renderTickets() {
             
             <div class="ticket-meta">
                 <span><strong>Rte:</strong> ${routeHtml}</span>
+                ${sixCarPlan ? `<span>•</span><span><strong>6 Car:</strong> ${sixCarPlan}</span>` : ''}
                 <span>•</span>
                 <span><strong>Type:</strong> ${t.ProblemType}</span>
                 <span>•</span>
