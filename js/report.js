@@ -314,7 +314,7 @@ function renderTickets() {
         return;
     }
 
-    // Filter by car
+    // Filter by car/division
     const carFilter = document.getElementById("ticketCarFilter").value;
     let filtered = [...openTickets];
     if (carFilter !== "all") {
@@ -322,8 +322,7 @@ function renderTickets() {
             const routeNum = parseInt(t.Route, 10);
             const matchedRow = state.DATA.find(r => Number(r.Route) === routeNum);
             if (!matchedRow) return false;
-            const val = matchedRow[carFilter];
-            return val !== null && val !== undefined && val !== "";
+            return String(matchedRow.YARD) === carFilter;
         });
     }
 
