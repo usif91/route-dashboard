@@ -322,7 +322,7 @@ function renderTickets() {
             const routeNum = parseInt(t.Route, 10);
             const matchedRow = state.DATA.find(r => Number(r.Route) === routeNum);
             if (!matchedRow) return false;
-            return String(matchedRow.YARD) === carFilter;
+            return String(matchedRow["6 car"]) === carFilter;
         });
     }
 
